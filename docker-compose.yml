@@ -1,0 +1,14 @@
+services:
+  vehiclegpt:
+    build: .
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: "2"
+    volumes:
+      - ./data:/app/data
+      - ./eval:/app/eval
+    command: >
+      sh -c "python -m sim.generator --days 28 --seed 42 --out data/vehicle.db &&
+             python -m pytest tests/ -v --tb=short"

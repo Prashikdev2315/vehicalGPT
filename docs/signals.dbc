@@ -1,0 +1,76 @@
+VERSION ""
+
+NS_ :
+
+BS_:
+
+BU_: VehicleGPT Simulator
+
+BO_ 256 Motion1: 8 Simulator
+ SG_ vehicle_speed : 0|16@1+ (0.01,0) [0|655.35] "km/h" VehicleGPT
+ SG_ accel_long : 16|16@1- (0.001,0) [-32.768|32.767] "m/s2" VehicleGPT
+ SG_ brake_pressure : 32|16@1+ (0.1,0) [0|6553.5] "bar" VehicleGPT
+ SG_ throttle_position : 48|10@1+ (0.1,0) [0|100.0] "%"  VehicleGPT
+
+BO_ 257 Motion2: 8 Simulator
+ SG_ accel_lat : 0|16@1- (0.001,0) [-32.768|32.767] "m/s2" VehicleGPT
+ SG_ steering_angle : 16|16@1- (0.1,0) [-3276.8|3276.7] "deg" VehicleGPT
+
+BO_ 512 Battery1: 8 Simulator
+ SG_ soc : 0|10@1+ (0.1,0) [0|100.0] "%" VehicleGPT
+ SG_ pack_voltage : 10|12@1+ (0.5,0) [0|2047.5] "V" VehicleGPT
+ SG_ pack_current : 22|13@1- (0.1,0) [-409.6|409.5] "A" VehicleGPT
+ SG_ coolant_pump_duty : 35|8@1+ (0.5,0) [0|100.0] "%" VehicleGPT
+
+BO_ 513 Battery2: 8 Simulator
+ SG_ pack_temp : 0|12@1- (0.1,-40) [-40|369.5] "C" VehicleGPT
+ SG_ coolant_temp : 12|12@1- (0.1,-40) [-40|369.5] "C" VehicleGPT
+
+BO_ 768 Energy: 8 Simulator
+ SG_ motor_power : 0|16@1- (0.01,0) [-327.68|327.67] "kW" VehicleGPT
+ SG_ regen_power : 16|14@1+ (0.01,0) [0|163.83] "kW" VehicleGPT
+ SG_ energy_per_km : 30|14@1+ (0.1,0) [0|1638.3] "Wh/km" VehicleGPT
+ SG_ range_estimate : 48|12@1+ (0.5,0) [0|2047.5] "km" VehicleGPT
+
+BO_ 1024 Climate: 8 Simulator
+ SG_ ambient_temp : 0|12@1- (0.1,-40) [-40|369.5] "C" VehicleGPT
+ SG_ cabin_temp : 12|12@1- (0.1,-40) [-40|369.5] "C" VehicleGPT
+ SG_ hvac_power : 24|12@1+ (0.01,0) [0|40.95] "kW" VehicleGPT
+ SG_ hvac_mode : 36|2@1+ (1,0) [0|3] "" VehicleGPT
+ SG_ cabin_target_temp : 40|10@1+ (0.1,10) [10|112.3] "C" VehicleGPT
+
+BO_ 1280 Chassis: 8 Simulator
+ SG_ tire_pressure_fl : 0|12@1+ (0.01,0) [0|40.95] "bar" VehicleGPT
+ SG_ tire_pressure_fr : 12|12@1+ (0.01,0) [0|40.95] "bar" VehicleGPT
+ SG_ tire_pressure_rl : 24|12@1+ (0.01,0) [0|40.95] "bar" VehicleGPT
+ SG_ tire_pressure_rr : 36|12@1+ (0.01,0) [0|40.95] "bar" VehicleGPT
+
+BO_ 1281 Chassis2: 8 Simulator
+ SG_ odometer : 0|24@1+ (0.1,0) [0|1677721.5] "km" VehicleGPT
+
+BO_ 1536 ADAS: 8 Simulator
+ SG_ adas_state : 0|3@1+ (1,0) [0|7] "" VehicleGPT
+ SG_ lane_keep_active : 3|1@1+ (1,0) [0|1] "" VehicleGPT
+ SG_ acc_active : 4|1@1+ (1,0) [0|1] "" VehicleGPT
+ SG_ disengagement_reason : 8|8@1+ (1,0) [0|255] "" VehicleGPT
+
+BO_ 1537 Charging: 8 Simulator
+ SG_ charger_connected : 0|1@1+ (1,0) [0|1] "" VehicleGPT
+ SG_ charge_power : 1|14@1+ (0.01,0) [0|163.83] "kW" VehicleGPT
+ SG_ charge_voltage : 16|12@1+ (0.5,0) [0|2047.5] "V" VehicleGPT
+ SG_ charge_current : 32|13@1+ (0.1,0) [0|819.1] "A" VehicleGPT
+
+BO_ 1538 Aux: 8 Simulator
+ SG_ aux_power : 0|12@1+ (0.01,0) [0|40.95] "kW" VehicleGPT
+ SG_ dc_dc_power : 12|12@1+ (0.01,0) [0|40.95] "kW" VehicleGPT
+ SG_ road_type : 24|2@1+ (1,0) [0|2] "" VehicleGPT
+ SG_ zone_id : 32|8@1+ (1,0) [0|255] "" VehicleGPT
+
+BO_ 1792 DiagSnapshot: 64 Simulator
+ SG_ diag_ecu_id : 0|8@1+ (1,0) [0|255] "" VehicleGPT
+ SG_ diag_status : 8|8@1+ (1,0) [0|255] "" VehicleGPT
+ SG_ diag_dtc_count : 16|8@1+ (1,0) [0|255] "" VehicleGPT
+ SG_ diag_payload_byte0 : 24|8@1+ (1,0) [0|255] "" VehicleGPT
+ SG_ diag_payload_byte63 : 504|8@1+ (1,0) [0|255] "" VehicleGPT
+
+

@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vehiclegpt/tools.schema.json",
+  "title": "VehicleGPT tool call",
+  "description": "The only actions the SLM may emit. Generate the llama.cpp grammar from this file. Dates are resolved by code before/after the model; the model emits ISO 8601 only. Signal and metric names are validated against signal_catalog at runtime.",
+  "$defs": {
+    "iso_date_or_datetime": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}(:\\d{2})?(Z|[+-]\\d{2}:\\d{2})?)?$"
+    },
+    "iso_interval": {
+      "type": "string",
+      "description": "start/end, each an ISO date or datetime",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}(T[\\d:]+(Z|[+-]\\d{2}:\\d{2})?)?/\\d{4}-\\d{2}-\\d{2}(T[\\d:]+(Z|[+-]\\d{2}:\\d{2})?)?$"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{1,63}$"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "adas_disengagement",
+        "battery_overtemp_warning",
+        "hard_braking",
+        "hard_acceleration",
+        "lane_departure_warning",
+        "forward_collision_warning",
+        "dtc_set",
+        "charging_session",
+        "ota_update",
+        "service_warning",
+        "any"
+      ]
+    },
+    "segment": {
+      "type": "string",
+      "enum": ["city", "highway", "mixed", "cold_start", "charging", "all"]
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "tool": { "const": "get_events" },
+        "args": {
+          "type": "object",
+          "properties": {
+            "type": { "$ref": "#/$defs/event_type" },
+            "start": { "$ref": "#/$defs/iso_date_or_datetime" },
+            "end": { "$ref": "#/$defs/iso_date_or_datetime" },
+            "source": { "type": "string" },
+            "limit": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 }
+          },
+          "required": ["type", "start", "end"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["tool", "args"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "tool": { "const": "trend" },
+        "args": {
+          "type": "object",
+          "properties": {
+            "metric": { "$ref": "#/$defs/name" },
+            "start": { "$ref": "#/$defs/iso_date_or_datetime" },
+            "end": { "$ref": "#/$defs/iso_date_or_datetime" },
+            "granularity": { "type": "string", "enum": ["trip", "day", "week"], "default": "day" }
+          },
+          "required": ["metric", "start", "end"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["tool", "args"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "tool": { "const": "compare" },
+        "args": {
+          "type": "object",
+          "properties": {
+            "metric": { "$ref": "#/$defs/name" },
+            "segment_a": { "$ref": "#/$defs/segment" },
+            "segment_b": { "$ref": "#/$defs/segment" },
+            "start": { "$ref": "#/$defs/iso_date_or_datetime" },
+            "end": { "$ref": "#/$defs/iso_date_or_datetime" }
+          },
+          "required": ["metric", "segment_a", "segment_b", "start", "end"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["tool", "args"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "tool": { "const": "largest_change" },
+        "args": {
+          "type": "object",
+          "properties": {
+            "metric": { "$ref": "#/$defs/name" },
+            "start": { "$ref": "#/$defs/iso_date_or_datetime" },
+            "end": { "$ref": "#/$defs/iso_date_or_datetime" },
+            "direction": { "type": "string", "enum": ["drop", "rise", "either"], "default": "drop" }
+          },
+          "required": ["metric", "start", "end"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["tool", "args"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "tool": { "const": "explain_change" },
+        "args": {
+          "type": "object",
+          "properties": {
+            "metric": { "$ref": "#/$defs/name" },
+            "window_a": { "$ref": "#/$defs/iso_interval" },
+            "window_b": { "$ref": "#/$defs/iso_interval" }
+          },
+          "required": ["metric", "window_a", "window_b"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["tool", "args"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "tool": { "const": "timeline_before" },
+        "args": {
+          "type": "object",
+          "properties": {
+            "event_id": { "type": "integer", "minimum": 1 },
+            "event_type": { "$ref": "#/$defs/event_type" },
+            "occurrence": { "type": "string", "enum": ["latest", "first", "all"], "default": "latest" },
+            "seconds_before": { "type": "integer", "minimum": 10, "maximum": 3600, "default": 600 }
+          },
+          "anyOf": [
+            { "required": ["event_id"] },
+            { "required": ["event_type"] }
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": ["tool", "args"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "tool": { "const": "search_logs" },
+        "args": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string", "minLength": 1, "maxLength": 120 },
+            "start": { "$ref": "#/$defs/iso_date_or_datetime" },
+            "end": { "$ref": "#/$defs/iso_date_or_datetime" },
+            "source": { "type": "string" },
+            "limit": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          "required": ["query", "start", "end"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["tool", "args"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "tool": { "const": "lookup_dtc" },
+        "args": {
+          "type": "object",
+          "properties": {
+            "code": { "type": "string", "pattern": "^[PCBU][0-9A-F]{4}$" }
+          },
+          "required": ["code"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["tool", "args"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "tool": { "const": "current_state" },
+        "args": {
+          "type": "object",
+          "properties": {
+            "signal": { "$ref": "#/$defs/name" }
+          },
+          "required": ["signal"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["tool", "args"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "description": "Emitted when the question is out of scope, a control request, or too ambiguous to plan. The runtime renders the matching refusal/clarification template.",
+      "properties": {
+        "tool": { "const": "respond_direct" },
+        "args": {
+          "type": "object",
+          "properties": {
+            "kind": { "type": "string", "enum": ["out_of_scope", "control_request", "safety_judgement", "clarify"] },
+            "clarify_field": { "type": "string", "enum": ["metric", "time_range", "event_type", "other"] }
+          },
+          "required": ["kind"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["tool", "args"],
+      "additionalProperties": false
+    }
+  ]
+}

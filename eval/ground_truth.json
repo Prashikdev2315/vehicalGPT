@@ -1,0 +1,146 @@
+[
+  {
+    "id": "S1",
+    "scenario": "Range reduction over ~2 weeks",
+    "ts_start": 1791417600000,
+    "ts_end": 1793232000000,
+    "cause": "ambient_temp_drop + hvac_increase",
+    "signals": [
+      "ambient_temp",
+      "hvac_power",
+      "energy_per_km",
+      "range_per_charge"
+    ],
+    "expected_facts": [
+      "range_per_charge fell 10-15%",
+      "HVAC/temperature contribution ~50-60%",
+      "ambient temperature mean dropped"
+    ]
+  },
+  {
+    "id": "S2",
+    "scenario": "Efficiency regression after software update",
+    "ts_start": 1792368000000,
+    "ts_end": 1793232000000,
+    "cause": "ota_update_efficiency_regression",
+    "signals": [
+      "energy_per_km",
+      "range_per_charge"
+    ],
+    "expected_facts": [
+      "energy_per_km step change on OTA update date",
+      "efficiency worsened ~8% post-update"
+    ],
+    "event_type": "ota_update"
+  },
+  {
+    "id": "S1_S2_overlap",
+    "scenario": "Range reduction \u2014 interacting causes (temperature + OTA)",
+    "ts_start": 1792368000000,
+    "ts_end": 1793232000000,
+    "cause": [
+      "ambient_temp_drop + hvac_increase",
+      "ota_update_efficiency_regression"
+    ],
+    "signals": [
+      "ambient_temp",
+      "hvac_power",
+      "energy_per_km",
+      "range_per_charge"
+    ],
+    "expected_facts": [
+      "range_per_charge fell ~18-22% (combined)",
+      "HVAC/temperature contribution ~40-50%",
+      "OTA update contribution ~35-45%",
+      "remainder unexplained ~10-15%"
+    ]
+  },
+  {
+    "id": "S3",
+    "scenario": "Battery overheating warning",
+    "ts_start": 1792740960000,
+    "ts_end": 1792743360000,
+    "cause": "coolant_pump_degradation",
+    "signals": [
+      "coolant_pump_duty",
+      "pack_temp",
+      "coolant_temp"
+    ],
+    "expected_facts": [
+      "coolant pump duty dropped before temperature rise",
+      "pack temperature exceeded threshold",
+      "DTC P0A7E set"
+    ],
+    "event_type": "battery_overtemp_warning",
+    "severity": "critical"
+  },
+  {
+    "id": "S4",
+    "scenario": "ADAS disengagements",
+    "ts_start": 1791676800000,
+    "ts_end": 1792713564000,
+    "cause": "various_adas_triggers",
+    "signals": [
+      "adas_state",
+      "disengagement_reason"
+    ],
+    "expected_facts": [
+      "Total 7 disengagement events",
+      "Events on days [10, 14, 21]"
+    ],
+    "event_type": "adas_disengagement",
+    "extra": {
+      "event_count": 7,
+      "days": [
+        10,
+        14,
+        21
+      ]
+    }
+  },
+  {
+    "id": "S5",
+    "scenario": "City vs highway energy difference",
+    "ts_start": 1790812800000,
+    "ts_end": 1793232000000,
+    "cause": "physics_model_road_type_difference",
+    "signals": [
+      "energy_per_km",
+      "road_type"
+    ],
+    "expected_facts": [
+      "city energy_per_km ~30-40% higher than highway",
+      "difference consistent with aero vs stop-start physics"
+    ]
+  },
+  {
+    "id": "S6",
+    "scenario": "Tire pressure drift (front-left)",
+    "ts_start": 1791676800000,
+    "ts_end": 1793232000000,
+    "cause": "slow_tire_leak_fl",
+    "signals": [
+      "tire_pressure_fl",
+      "energy_per_km"
+    ],
+    "expected_facts": [
+      "tire_pressure_fl dropped 0.05 bar/day from day 10",
+      "small contribution to efficiency decline"
+    ]
+  },
+  {
+    "id": "S7",
+    "scenario": "Signal dropout window",
+    "ts_start": 1792144800000,
+    "ts_end": 1792152000000,
+    "cause": "source_outage",
+    "signals": [
+      "soc",
+      "pack_temp"
+    ],
+    "expected_facts": [
+      "data gap reported for soc and pack_temp",
+      "no guessing during gap"
+    ]
+  }
+]

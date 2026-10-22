@@ -1,0 +1,12 @@
+# Placeholder SOME/IP fixture
+# This file contains a minimal recorded SOME/IP service message
+# for testing the someip_adapter stub. NOT a real vehicle capture.
+#
+# Format: simplified hex dump of a SOME/IP header + payload
+# Service ID: 0x1234, Method ID: 0x0001, Length: 16
+# Client ID: 0x0001, Session ID: 0x0001
+# Protocol Version: 1, Interface Version: 1
+# Message Type: REQUEST (0x00), Return Code: OK (0x00)
+#
+# Hex data (header + payload):
+12340001000000100001000101010000DEADBEEF01020304

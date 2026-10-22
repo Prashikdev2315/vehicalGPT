@@ -1,0 +1,30 @@
+{
+  "_fixture": true,
+  "_description": "Placeholder Android Vehicle HAL property dump for adapter testing. NOT a real vehicle capture.",
+  "properties": [
+    {
+      "prop": 291504905,
+      "prop_name": "PERF_VEHICLE_SPEED",
+      "area_id": 0,
+      "timestamp": 1698000000000,
+      "value": {"floatValues": [55.0]},
+      "status": "AVAILABLE"
+    },
+    {
+      "prop": 291504908,
+      "prop_name": "EV_BATTERY_LEVEL",
+      "area_id": 0,
+      "timestamp": 1698000000000,
+      "value": {"floatValues": [72.5]},
+      "status": "AVAILABLE"
+    },
+    {
+      "prop": 289408009,
+      "prop_name": "HVAC_TEMPERATURE_SET",
+      "area_id": 49,
+      "timestamp": 1698000000000,
+      "value": {"floatValues": [22.0]},
+      "status": "AVAILABLE"
+    }
+  ]
+}

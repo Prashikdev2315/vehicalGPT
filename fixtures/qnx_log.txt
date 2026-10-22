@@ -1,0 +1,7 @@
+# Placeholder QNX/DLT-style log fixture for adapter testing.
+# NOT a real vehicle capture.
+2026-10-01T08:15:00.123Z INFO ECU_BATTERY [battery_monitor] Pack temperature within normal range: 28.5 C
+2026-10-01T08:15:01.456Z INFO ECU_BATTERY [battery_monitor] SOC update: 85.2%
+2026-10-01T08:15:02.789Z WARN ECU_THERMAL [coolant_ctrl] Coolant pump duty below target: 45% (expected 60%)
+2026-10-01T08:15:10.012Z ERROR ECU_THERMAL [coolant_ctrl] Coolant flow rate critical: 1.2 L/min
+2026-10-01T08:15:15.345Z WARN ECU_BATTERY [battery_monitor] Pack temperature rising: 42.1 C (threshold 45 C)

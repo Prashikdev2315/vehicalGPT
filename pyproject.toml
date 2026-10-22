@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vehiclegpt"
+version = "0.1.0"
+description = "Offline, on-device natural-language assistant for vehicle data"
+requires-python = ">=3.11"
+dependencies = [
+    "python-can==4.6.1",
+    "cantools>=39.0.0",
+    "numpy>=1.24.0",
+    "msgpack>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-timeout",
+]
+
+[tool.setuptools.packages.find]
+include = ["ingest*", "store*", "insight*", "tools*", "llm*", "sim*", "eval*", "ui*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
