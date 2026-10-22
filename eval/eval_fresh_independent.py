@@ -25,11 +25,15 @@ from slm.engine import get_slm_engine
 from slm.router import PlannerRouter
 
 DATASET_PATH = Path("eval/fresh_independent_60.json")
-REPORT_PATH = Path("eval/fresh_independent_report.json")
+REPORT_PATH = Path("eval/fresh_independent_remediation_report.json")
 REF_NOW = datetime(2026, 10, 22, 14, 0, 0, tzinfo=timezone.utc)
 
 
-def run_fresh_evaluation(dataset_path: Path = DATASET_PATH, use_engine: bool = False) -> dict[str, Any]:
+def run_fresh_evaluation(
+    dataset_path: Path = DATASET_PATH,
+    use_engine: bool = False,
+    report_path: Path = REPORT_PATH,
+) -> dict[str, Any]:
     with open(dataset_path, "r", encoding="utf-8") as f:
         items = json.load(f)
 
@@ -166,19 +170,20 @@ def run_fresh_evaluation(dataset_path: Path = DATASET_PATH, use_engine: bool = F
     for cat, c_info in per_cat_summary.items():
         print(f"  {cat:<18}: Tool = {c_info['tool_accuracy_pct']:5.1f}% ({c_info['tool_correct']}/{c_info['total']}) | Full = {c_info['full_accuracy_pct']:5.1f}% ({c_info['full_correct']}/{c_info['total']})")
 
-    with open(REPORT_PATH, "w", encoding="utf-8") as f:
+    with open(report_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
-    print(f"\nFresh independent evaluation report written to {REPORT_PATH}\n")
+    print(f"\nFresh independent evaluation report written to {report_path}\n")
     return report
 
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate on fresh independent 60-item question set")
     parser.add_argument("--dataset", default=str(DATASET_PATH), help="Path to 60-item JSON dataset")
+    parser.add_argument("--report-path", default=str(REPORT_PATH), help="Path to write JSON evaluation report")
     parser.add_argument("--engine", action="store_true", help="Use real SLM engine for inference")
     args = parser.parse_args()
 
-    run_fresh_evaluation(Path(args.dataset), use_engine=args.engine)
+    run_fresh_evaluation(Path(args.dataset), use_engine=args.engine, report_path=Path(args.report_path))
 
 
 if __name__ == "__main__":

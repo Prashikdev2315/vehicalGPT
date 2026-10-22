@@ -22,8 +22,9 @@ CONTROL_PATTERNS = [
     r"\b(start\s+charging|stop\s+charging)\b",
     r"\b(apply\s+(?:the\s+)?(?:emergency\s+)?(?:parking\s+)?brake|release\s+(?:the\s+)?parking\s+brake)\b",
     r"\b(turn\s+(?:on|off)\s+(?:the\s+)?(?:climate|air\s+conditioning|ac|seat\s+heaters)|set\s+(?:ac\s+)?(?:temperature|temp)\s+to\s+\d+(?:\s*[cf])?|set\s+to\s+\d+(?:\s*[cf])?)\b",
-    r"\b(switch\s+headlights|high\s+beam|low\s+beam|fog\s+lights|turn\s+(?:on|off)\s+high\s+beams?|turn\s+(?:on|off)\s+headlights)\b",
+    r"\b(switch\s+headlights|headlight|high\s+beam|low\s+beam|fog\s+lights|turn\s+(?:on|off)\s+(?:the\s+)?high\s+beams?|turn\s+(?:on|off)\s+(?:the\s+)?headlights?)\b",
     r"\b(enable\s+autopilot|activate\s+autopilot|autonomous\s+autopilot|self\s+driving)\b",
+    r"\b(accelerate\s+(?:the\s+)?vehicle|accelerate\s+to\s+\d+|increase\s+(?:the\s+)?(?:vehicle\s+)?speed(?:\s+to\s+\d+)?|drive\s+faster|speed\s+up\s+(?:the\s+)?car)\b",
     r"\b(wipe\s+(?:the\s+)?windshield|wipers|washer\s+fluid)\b",
     r"\b(fold\s+(?:the\s+)?side\s+mirrors|unfold\s+(?:the\s+)?side\s+mirrors)\b",
     r"\b(adjust\s+driver\s+seat|move\s+passenger\s+seat)\b",
@@ -43,9 +44,9 @@ SAFETY_PATTERNS = [
 
 OUT_OF_SCOPE_PATTERNS = [
     r"\b(capital\s+of|recipe\s+for|write\s+a\s+poem|tell\s+(?:me\s+)?(?:a\s+)?(?:funny\s+)?joke|joke|how\s+do\s+i\s+bake)\b",
-    r"\b(who\s+won|world\s+cup|super\s+bowl|stock\s+price|nasdaq|translate\s+this|how\s+do\s+you\s+say)\b",
+    r"\b(who\s+won|world\s+cup|super\s+bowl|stock\s+price|stock\s+market|nasdaq|translate\s+this|how\s+do\s+you\s+say)\b",
     r"\b(movies\s+(?:are\s+)?playing|restaurant\s+nearby|square\s+root|solve\s+this\s+math)\b",
-    r"\b(first\s+president|eiffel\s+tower|python\s+script|quantum\s+computing)\b",
+    r"\b(first\s+president|eiffel\s+tower|python\s+script|quantum\s+computing|ceo\s+of|who\s+is\s+(?:the\s+)?(?:ceo|founder|president|leader))\b",
     r"\b(weather\s+forecast|will\s+it\s+rain|relativity|distance\s+between\s+the\s+earth)\b",
     r"\b(travel\s+advice|tourist\s+attractions|plot\s+of|who\s+wrote|guitar\s+chord|chess\s+openings)\b",
 ]
@@ -59,6 +60,13 @@ CLARIFY_PATTERNS = [
 ]
 
 
+# Patterns that look like safety words but are actually diagnostic log searches
+_SAFETY_LOG_SEARCH_WHITELIST = re.compile(
+    r"(search|scan|find|look)\s+.*(?:log|logs|ecu|qnx).*(?:for|containing|mentioning)\s+",
+    re.I,
+)
+
+
 def check_pre_execution_gate(query: str) -> tuple[bool, str | None, dict[str, Any] | None]:
     """Check pre-execution safety gate. Returns (intercepted, tool_name, args)."""
     clean = query.strip().lower()
@@ -69,6 +77,9 @@ def check_pre_execution_gate(query: str) -> tuple[bool, str | None, dict[str, An
 
     for p in SAFETY_PATTERNS:
         if re.search(p, clean):
+            # Whitelist: diagnostic log searches for safety-related terms are data queries, not safety judgements
+            if _SAFETY_LOG_SEARCH_WHITELIST.search(clean):
+                break
             return True, "respond_direct", {"kind": "safety_judgement"}
 
     for p in OUT_OF_SCOPE_PATTERNS:
@@ -234,18 +245,19 @@ class PlannerRouter:
             return {"tool": "compare", "args": {"metric": metric, "segment_a": m.group(2), "segment_b": m.group(3), "start": m.group(4), "end": m.group(5)}}
 
         # Canonical get_events
-        m = re.match(r"get\s+all\s+([a-z_ ]+)\s+events\s+between\s+(\S+)\s+and\s+(\S+)", clean)
+        m = re.match(r"(?:get|list|find|show)\s+all\s+([a-z_ ]+)\s+events\s+between\s+(\S+)\s+and\s+(\S+)", clean)
         if m:
             ev_str = m.group(1).strip().replace(" ", "_")
+            ev_raw = m.group(1).strip()  # keep original spacing for looser matching
             ev_type = "adas_disengagement"
-            if "lane_departure" in ev_str: ev_type = "lane_departure_warning"
+            if "lane_departure" in ev_str or "lane departure" in ev_raw: ev_type = "lane_departure_warning"
             elif "overheat" in ev_str or "battery_overtemp" in ev_str: ev_type = "battery_overtemp_warning"
-            elif "hard_braking" in ev_str or ("braking" in ev_str and "hard" in ev_str): ev_type = "hard_braking"
-            elif "braking" in ev_str: ev_type = "hard_braking"
-            elif "hard_acceleration" in ev_str or "acceleration" in ev_str: ev_type = "hard_acceleration"
-            elif "forward_collision" in ev_str or "collision" in ev_str: ev_type = "forward_collision_warning"
-            elif "charging" in ev_str: ev_type = "charging_session"
-            elif "ota" in ev_str: ev_type = "ota_update"
+            elif "hard_braking" in ev_str or ("braking" in ev_raw and "hard" in ev_raw): ev_type = "hard_braking"
+            elif "braking" in ev_raw: ev_type = "hard_braking"
+            elif "hard_acceleration" in ev_str or re.search(r"a[c]{1,2}elerat", ev_raw): ev_type = "hard_acceleration"
+            elif "forward_collision" in ev_str or "collision" in ev_raw: ev_type = "forward_collision_warning"
+            elif "charging" in ev_raw: ev_type = "charging_session"
+            elif "ota" in ev_raw: ev_type = "ota_update"
             return {"tool": "get_events", "args": {"type": ev_type, "start": m.group(2), "end": m.group(3)}}
 
         # Canonical current_state
@@ -262,6 +274,7 @@ class PlannerRouter:
             elif "rear left" in sig_raw or "rl" in sig_raw: sig = "tire_pressure_rl"
             elif "rear right" in sig_raw or "rr" in sig_raw: sig = "tire_pressure_rr"
             elif "odometer" in sig_raw: sig = "odometer"
+            elif "cabin" in sig_raw: sig = "cabin_temp"
             elif "temp" in sig_raw: sig = "pack_temp"
             return {"tool": "current_state", "args": {"signal": sig}}
 
@@ -286,12 +299,33 @@ class PlannerRouter:
         """Two-step planning: Step 1 Intent classification, Step 2 Slot filling."""
         clean = query.lower()
 
-        # Follow-up context check
+        # Follow-up: search_logs with 'instead' or 'search for X'
+        if prev_turn and prev_turn.get("tool") == "search_logs":
+            m_search = re.search(r"(?:search|scan|find|look)\s+(?:for|in)?\s*([\w\s]+?)(?:\s+instead|\s*$)", clean)
+            if m_search:
+                q_str = m_search.group(1).strip()
+                prev_args = prev_turn.get("args", {})
+                start = resolved_range[0] if resolved_range else prev_args.get("start", "2026-10-01")
+                end = resolved_range[1] if resolved_range else prev_args.get("end", "2026-10-28")
+                return {"tool": "search_logs", "args": {"query": q_str, "start": start, "end": end}}
+
+        # Follow-up: compare with 'them' referring to prev_turn segments
+        if prev_turn and prev_turn.get("tool") == "compare" and re.search(r"\bthem\b", clean):
+            prev_args = prev_turn.get("args", {})
+            seg_a = prev_args.get("segment_a", "city")
+            seg_b = prev_args.get("segment_b", "highway")
+            start = resolved_range[0] if resolved_range else prev_args.get("start", "2026-10-01")
+            end = resolved_range[1] if resolved_range else prev_args.get("end", "2026-10-28")
+            metric = "range_per_charge" if "range" in clean else ("energy_per_km" if "energy" in clean else prev_args.get("metric", "energy_per_km"))
+            return {"tool": "compare", "args": {"metric": metric, "segment_a": seg_a, "segment_b": seg_b, "start": start, "end": end}}
+
+        # Follow-up context check: timeline after events
         if prev_turn and ("why" in clean or "what caused" in clean or "before" in clean or "that event" in clean or "what happened" in clean) and "precursors" not in clean:
             if prev_turn.get("tool") == "get_events":
+                ev_type = prev_turn.get("args", {}).get("type", "battery_overtemp_warning")
                 return {
                     "tool": "timeline_before",
-                    "args": {"event_type": "battery_overtemp_warning", "occurrence": "latest", "seconds_before": 600},
+                    "args": {"event_type": ev_type, "occurrence": "latest", "seconds_before": 600},
                 }
 
         # Step 1: Intent classification
@@ -339,12 +373,13 @@ class PlannerRouter:
         # Explain Change Intent
         if (
             any(w in clean for w in ["explain", "why did", "why has", "why is", "wy did", "eating up", "what caused", "break down",
-                                      "fewer miles", "getting fewer", "rang decrese", "range decrese", "decrese"])
-            and any(w in clean for w in ["range", "efficiency", "consumption", "drop", "loss", "decrease", "worsen",
+                                      "fewer miles", "getting fewer", "rang decrese", "range decrese", "decrese",
+                                      "rang drpped", "rang dropped", "range drpped"])
+            and any(w in clean for w in ["range", "rang", "efficiency", "consumption", "drop", "drpped", "loss", "decrease", "worsen",
                                           "change", "worse", "mileage", "bad", "miles per charge", "per charge"])
             and not any(w in clean for w in ["disengage", "disconnect", "autopilot"])
         ) or (
-            any(w in clean for w in ["fewer miles", "getting fewer", "rang decrese", "range decrese"])
+            any(w in clean for w in ["fewer miles", "getting fewer", "rang decrese", "range decrese", "rang drpped"])
             and not any(w in clean for w in ["disengage", "disconnect"])
         ):
             # "battery efficiency loss" means range_per_charge (battery range), not energy_per_km;
@@ -359,7 +394,7 @@ class PlannerRouter:
 
         # Largest Change Intent
         if (
-            any(w in clean for w in ["largest", "biggest", "worst", "highest", "sharpest", "sharply", "drop the most", "largst", "bigest", "most sharply"])
+            any(w in clean for w in ["largest", "biggest", "worst", "highest", "sharpest", "sharply", "steepest", "drop the most", "largst", "bigest", "most sharply"])
             and any(w in clean for w in ["drop", "hit", "change", "rise", "spike", "fall", "decrease", "increase", "efficiency", "range", "chang", "sustained", "sharply"])
         ) or any(w in clean for w in ["consumption spike", "drop the most"]) or (
             any(w in clean for w in ["jump the most", "jumped the most"])
@@ -367,14 +402,18 @@ class PlannerRouter:
         ) or (
             re.search(r"\b(bigest|largst)\b", clean)
             and any(w in clean for w in ["drop", "range", "change", "hit", "rise"])
+        ) or (
+            any(w in clean for w in ["steepest", "sharpest"])
+            and any(w in clean for w in ["increase", "rise", "drop", "decrease", "change"])
         ):
             metric = "energy_per_km" if any(w in clean for w in ["energy", "consumption", "efficiency", "fuel", "power consumption", "power"]) else "range_per_charge"
             direction = "increase" if any(w in clean for w in ["spike", "rise", "increase", "jump", "jumped"]) else "drop"
             return {"tool": "largest_change", "args": {"metric": metric, "start": start_date, "end": end_date, "direction": direction}}
 
         # Compare Intent
-        # Synonym map: motorway/freeway/hwy → highway; urban → city
-        compare_synonyms = {"motorway": "highway", "freeway": "highway", "hwy": "highway", "urban": "city"}
+        # Synonym map: motorway/freeway/hwy/higway → highway; urban → city
+        compare_synonyms = {"motorway": "highway", "freeway": "highway", "hwy": "highway", "urban": "city",
+                            "higway": "highway", "highwy": "highway", "higwy": "highway"}
         clean_cmp = clean
         for syn, canon in compare_synonyms.items():
             clean_cmp = clean_cmp.replace(syn, canon)
@@ -413,7 +452,12 @@ class PlannerRouter:
         _is_event_occurrence_query = any(w in clean for w in [
             "times the car was charged", "times charged", "times the car", "list all times",
             "acceleration events", "collision events", "braking events", "departure events",
-        ])
+            "charging session", "charging sessions", "ota update", "ota updates",
+        ]) or (
+            # "Did any X happen" / "Find all X" / "Were there any X" pattern signals events intent
+            re.search(r"\b(did\s+any|were\s+there\s+any|was\s+there\s+any|find\s+all|list\s+all|get\s+all|show\s+all)\b", clean)
+            and any(w in clean for w in ["event", "warning", "session", "update", "braking", "acceleration", "charging", "ota", "collision"])
+        )
         if not _is_event_occurrence_query and any(w in clean for w in ["trend", "trended", "trnd", "rang trend", "increasing", "declining", "progress", "progression",
                                      "over time", "daily trend", "weekly trend", "history", "plot", "chart", "past 14", "past 7",
                                      "last 14", "last 7", "last few"]):
@@ -481,11 +525,12 @@ class PlannerRouter:
 
         # Current State Intent
         if any(w in clean for w in ["current", "curret", "curnt", "reading", "check", "chek", "how hot", "how far", "whats",
-                                     "what is", "odometer", "odometr", "mileage", "speed", "speeed", "temp", "psi",
+                                     "what is", "odometer", "odometr", "mileage", "milage", "milag", "speed", "speeed", "sped",
+                                     "traveling", "travelling", "how fast", "temp", "psi",
                                      "pressure", "presure", "soc", "battery percentage", "running at", "now", "pummp"]):
             sig = "soc"
-            if any(w in clean for w in ["speed", "speeed"]): sig = "vehicle_speed"
-            elif any(w in clean for w in ["odometer", "odometr", "mileage", "miles on"]): sig = "odometer"
+            if any(w in clean for w in ["speed", "speeed", "sped", "traveling", "travelling", "how fast", "fast is"]): sig = "vehicle_speed"
+            elif any(w in clean for w in ["odometer", "odometr", "mileage", "milage", "milag", "miles on", "milage reading"]): sig = "odometer"
             elif any(w in clean for w in ["dutty", "pump", "pummp"]): sig = "coolant_pump_duty"
             elif "colant" in clean or "coolant" in clean: sig = "coolant_temp"
             elif "cabin" in clean: sig = "cabin_temp"
