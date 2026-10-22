@@ -12,9 +12,14 @@ RUN apt-get update && \
         build-essential && \
     rm -rf /var/lib/apt/lists/*
 
-# Portable CPU compile flags for llama.cpp (AVX2 + FMA + AVX, no platform-locked microarchitectures)
-ENV CMAKE_ARGS="-DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_AVX=ON"
-RUN pip install --no-cache-dir wheel && \
+# Portable CPU compile flags for llama.cpp chosen by TARGETARCH
+ARG TARGETARCH
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+        export CMAKE_ARGS="-DGGML_NATIVE=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF"; \
+    else \
+        export CMAKE_ARGS="-DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_AVX=ON -DGGML_NATIVE=OFF"; \
+    fi && \
+    pip install --no-cache-dir wheel && \
     pip wheel --no-cache-dir --wheel-dir=/build/wheels llama-cpp-python==0.3.36
 
 # Stage 2: Minimal runtime image

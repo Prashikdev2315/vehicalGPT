@@ -33,6 +33,7 @@ TIME_PATTERNS = [
     r"\b(early\s+october\s+and\s+late\s+october)\b",
     # ISO intervals & dates
     r"\b(\d{4}-\d{2}-\d{2}/\d{4}-\d{2}-\d{2})\b",
+    r"\b((?:between\s+)?\d{4}-\d{2}-\d{2}\s+(?:to|and|-)\s+\d{4}-\d{2}-\d{2})\b",
     r"\b(\d{4}-\d{2}-\d{2})\b",
 ]
 

@@ -75,20 +75,20 @@ def split_sentences(text: str) -> list[str]:
     return [s.strip() for s in sentences if s.strip()]
 
 
-def extract_numbers_from_text(text: str) -> list[float]:
-    """Extract floating point numbers from text, ignoring finding IDs in brackets."""
+def extract_number_tokens_from_text(text: str) -> list[tuple[str, float]]:
+    """Extract numeric tokens (string representation and float) from text, ignoring finding IDs and ISO dates."""
     # Remove citations like [f1], [f1, f2] before extracting numbers
     cleaned = CITATION_REGEX.sub("", text)
     # Remove ISO dates like 2026-10-21 so year/month/day aren't parsed as arbitrary data floats
     cleaned = re.sub(r"\b\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:Z)?)?\b", "", cleaned)
     tokens = NUMBER_REGEX.findall(cleaned)
-    nums: list[float] = []
+    results: list[tuple[str, float]] = []
     for t in tokens:
         try:
-            nums.append(float(t))
+            results.append((t, float(t)))
         except ValueError:
             pass
-    return nums
+    return results
 
 
 def extract_all_packet_numbers(packet: dict[str, Any], finding_ids: list[str]) -> set[float]:
@@ -129,18 +129,38 @@ def extract_all_packet_numbers(packet: dict[str, Any], finding_ids: list[str]) -
     return valid_nums
 
 
-def number_matches_any(num: float, valid_set: set[float], tol_pct: float = 0.02) -> bool:
-    """Check if number matches any valid number within tolerance or rounding precision."""
+def number_matches_displayed_precision(num_str: str, num: float, valid_set: set[float]) -> bool:
+    """Check if number matches any valid packet number under displayed-precision rounding.
+
+    Strictly uses displayed-precision rounding (e.g. k decimal places displayed),
+    never arbitrary +/- 1% percentage tolerance.
+    """
+    clean_str = num_str.lstrip("+-")
+    if "." in clean_str:
+        k = len(clean_str.split(".")[1])
+    else:
+        k = 0
+
     abs_num = abs(num)
+    target = round(abs_num, k)
+
     for v in valid_set:
         abs_v = abs(v)
-        # Exact or close match
-        if math.isclose(abs_num, abs_v, rel_tol=tol_pct, abs_tol=0.15):
+        # Check rounding to displayed precision k
+        if round(abs_v, k) == target:
             return True
-        # Check integer rounding (e.g. 38% vs 38.4%)
-        if round(abs_num) == round(abs_v):
+        # Check formatted string representation at precision k
+        if f"{abs_v:.{k}f}" == f"{abs_num:.{k}f}":
+            return True
+        # Check integer truncation / ceiling boundary
+        if k == 0 and (math.floor(abs_v) == target or math.ceil(abs_v) == target):
             return True
     return False
+
+
+def number_matches_any(num: float, valid_set: set[float]) -> bool:
+    """Backward-compatible wrapper using displayed-precision rounding."""
+    return number_matches_displayed_precision(str(num), num, valid_set)
 
 
 def verify_response(text: str, packet: dict[str, Any]) -> VerificationResult:
@@ -234,18 +254,17 @@ def verify_response(text: str, packet: dict[str, Any]) -> VerificationResult:
                     violation_type="unauthorized_causal_wording",
                 )
 
-        # 5. Number grounding check
-        sentence_numbers = extract_numbers_from_text(sentence)
+        # 5. Number grounding check (displayed-precision rounding)
+        sentence_number_tokens = extract_number_tokens_from_text(sentence)
         valid_numbers = extract_all_packet_numbers(packet, cited_ids)
 
-        for num in sentence_numbers:
-            # Skip common non-data integers like 1st, 2nd, small ordinals or count 0
-            if not number_matches_any(num, valid_numbers):
+        for num_str, num_val in sentence_number_tokens:
+            if not number_matches_displayed_precision(num_str, num_val, valid_numbers):
                 fallback = render_template_response(packet)
                 return VerificationResult(
                     passed=False,
                     text=fallback,
-                    reason=f"Sentence {idx+1} contains ungrounded number {num} not matching cited findings {cited_ids}",
+                    reason=f"Sentence {idx+1} contains ungrounded number '{num_str}' not matching cited findings {cited_ids} at displayed precision",
                     violation_type="ungrounded_number",
                 )
 

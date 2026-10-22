@@ -1,0 +1,340 @@
+{
+  "timestamp": "2026-10-22T17:32:31.780950+00:00",
+  "total_items": 100,
+  "splits": {
+    "dev": {
+      "total_items": 50,
+      "answer_correct_count": 36,
+      "answer_correctness_pct": 72.0,
+      "answer_ci_95_pct": [
+        58.33,
+        82.53
+      ],
+      "tool_match_pct": 74.0,
+      "tool_ci_95_pct": [
+        60.45,
+        84.13
+      ],
+      "schema_validity_pct": 100.0,
+      "categories": {
+        "attribution": {
+          "total": 3,
+          "answer_correct": 3,
+          "answer_correct_pct": 100.0,
+          "answer_ci_95": [
+            43.85,
+            100.0
+          ],
+          "tool_matched_pct": 100.0
+        },
+        "change_point": {
+          "total": 2,
+          "answer_correct": 0,
+          "answer_correct_pct": 0.0,
+          "answer_ci_95": [
+            0.0,
+            65.76
+          ],
+          "tool_matched_pct": 0.0
+        },
+        "events": {
+          "total": 7,
+          "answer_correct": 5,
+          "answer_correct_pct": 71.43,
+          "answer_ci_95": [
+            35.89,
+            91.78
+          ],
+          "tool_matched_pct": 85.71
+        },
+        "timeline": {
+          "total": 2,
+          "answer_correct": 0,
+          "answer_correct_pct": 0.0,
+          "answer_ci_95": [
+            0.0,
+            65.76
+          ],
+          "tool_matched_pct": 0.0
+        },
+        "cohort": {
+          "total": 3,
+          "answer_correct": 1,
+          "answer_correct_pct": 33.33,
+          "answer_ci_95": [
+            6.15,
+            79.23
+          ],
+          "tool_matched_pct": 33.33
+        },
+        "diagnostics": {
+          "total": 3,
+          "answer_correct": 3,
+          "answer_correct_pct": 100.0,
+          "answer_ci_95": [
+            43.85,
+            100.0
+          ],
+          "tool_matched_pct": 100.0
+        },
+        "logs": {
+          "total": 3,
+          "answer_correct": 2,
+          "answer_correct_pct": 66.67,
+          "answer_ci_95": [
+            20.77,
+            93.85
+          ],
+          "tool_matched_pct": 66.67
+        },
+        "state": {
+          "total": 3,
+          "answer_correct": 3,
+          "answer_correct_pct": 100.0,
+          "answer_ci_95": [
+            43.85,
+            100.0
+          ],
+          "tool_matched_pct": 100.0
+        },
+        "trend": {
+          "total": 4,
+          "answer_correct": 0,
+          "answer_correct_pct": 0.0,
+          "answer_ci_95": [
+            0.0,
+            48.99
+          ],
+          "tool_matched_pct": 0.0
+        },
+        "refusal_control": {
+          "total": 5,
+          "answer_correct": 5,
+          "answer_correct_pct": 100.0,
+          "answer_ci_95": [
+            56.55,
+            100.0
+          ],
+          "tool_matched_pct": 100.0
+        },
+        "refusal_scope": {
+          "total": 5,
+          "answer_correct": 4,
+          "answer_correct_pct": 80.0,
+          "answer_ci_95": [
+            37.55,
+            96.38
+          ],
+          "tool_matched_pct": 100.0
+        },
+        "refusal_safety": {
+          "total": 2,
+          "answer_correct": 2,
+          "answer_correct_pct": 100.0,
+          "answer_ci_95": [
+            34.24,
+            100.0
+          ],
+          "tool_matched_pct": 100.0
+        },
+        "clarify": {
+          "total": 3,
+          "answer_correct": 3,
+          "answer_correct_pct": 100.0,
+          "answer_ci_95": [
+            43.85,
+            100.0
+          ],
+          "tool_matched_pct": 100.0
+        },
+        "edge_case": {
+          "total": 2,
+          "answer_correct": 2,
+          "answer_correct_pct": 100.0,
+          "answer_ci_95": [
+            34.24,
+            100.0
+          ],
+          "tool_matched_pct": 100.0
+        },
+        "data_gap": {
+          "total": 3,
+          "answer_correct": 3,
+          "answer_correct_pct": 100.0,
+          "answer_ci_95": [
+            43.85,
+            100.0
+          ],
+          "tool_matched_pct": 66.67
+        }
+      }
+    },
+    "test": {
+      "total_items": 50,
+      "answer_correct_count": 39,
+      "answer_correctness_pct": 78.0,
+      "answer_ci_95_pct": [
+        64.76,
+        87.25
+      ],
+      "tool_match_pct": 82.0,
+      "tool_ci_95_pct": [
+        69.2,
+        90.23
+      ],
+      "schema_validity_pct": 100.0,
+      "categories": {
+        "attribution": {
+          "total": 2,
+          "answer_correct": 2,
+          "answer_correct_pct": 100.0,
+          "answer_ci_95": [
+            34.24,
+            100.0
+          ],
+          "tool_matched_pct": 100.0
+        },
+        "change_point": {
+          "total": 3,
+          "answer_correct": 0,
+          "answer_correct_pct": 0.0,
+          "answer_ci_95": [
+            0.0,
+            56.15
+          ],
+          "tool_matched_pct": 0.0
+        },
+        "events": {
+          "total": 5,
+          "answer_correct": 3,
+          "answer_correct_pct": 60.0,
+          "answer_ci_95": [
+            23.07,
+            88.24
+          ],
+          "tool_matched_pct": 80.0
+        },
+        "timeline": {
+          "total": 3,
+          "answer_correct": 1,
+          "answer_correct_pct": 33.33,
+          "answer_ci_95": [
+            6.15,
+            79.23
+          ],
+          "tool_matched_pct": 33.33
+        },
+        "cohort": {
+          "total": 3,
+          "answer_correct": 3,
+          "answer_correct_pct": 100.0,
+          "answer_ci_95": [
+            43.85,
+            100.0
+          ],
+          "tool_matched_pct": 100.0
+        },
+        "diagnostics": {
+          "total": 3,
+          "answer_correct": 3,
+          "answer_correct_pct": 100.0,
+          "answer_ci_95": [
+            43.85,
+            100.0
+          ],
+          "tool_matched_pct": 100.0
+        },
+        "logs": {
+          "total": 3,
+          "answer_correct": 2,
+          "answer_correct_pct": 66.67,
+          "answer_ci_95": [
+            20.77,
+            93.85
+          ],
+          "tool_matched_pct": 66.67
+        },
+        "state": {
+          "total": 4,
+          "answer_correct": 3,
+          "answer_correct_pct": 75.0,
+          "answer_ci_95": [
+            30.06,
+            95.44
+          ],
+          "tool_matched_pct": 100.0
+        },
+        "trend": {
+          "total": 3,
+          "answer_correct": 3,
+          "answer_correct_pct": 100.0,
+          "answer_ci_95": [
+            43.85,
+            100.0
+          ],
+          "tool_matched_pct": 100.0
+        },
+        "refusal_control": {
+          "total": 5,
+          "answer_correct": 5,
+          "answer_correct_pct": 100.0,
+          "answer_ci_95": [
+            56.55,
+            100.0
+          ],
+          "tool_matched_pct": 100.0
+        },
+        "refusal_scope": {
+          "total": 5,
+          "answer_correct": 4,
+          "answer_correct_pct": 80.0,
+          "answer_ci_95": [
+            37.55,
+            96.38
+          ],
+          "tool_matched_pct": 100.0
+        },
+        "refusal_safety": {
+          "total": 3,
+          "answer_correct": 3,
+          "answer_correct_pct": 100.0,
+          "answer_ci_95": [
+            43.85,
+            100.0
+          ],
+          "tool_matched_pct": 100.0
+        },
+        "clarify": {
+          "total": 2,
+          "answer_correct": 2,
+          "answer_correct_pct": 100.0,
+          "answer_ci_95": [
+            34.24,
+            100.0
+          ],
+          "tool_matched_pct": 100.0
+        },
+        "edge_case": {
+          "total": 3,
+          "answer_correct": 2,
+          "answer_correct_pct": 66.67,
+          "answer_ci_95": [
+            20.77,
+            93.85
+          ],
+          "tool_matched_pct": 66.67
+        },
+        "data_gap": {
+          "total": 3,
+          "answer_correct": 3,
+          "answer_correct_pct": 100.0,
+          "answer_ci_95": [
+            43.85,
+            100.0
+          ],
+          "tool_matched_pct": 66.67
+        }
+      }
+    }
+  }
+}

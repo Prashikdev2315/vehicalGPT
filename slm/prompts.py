@@ -6,7 +6,7 @@ from typing import Any
 
 # System prompt prefix defining role, available tools, catalog rules, and date context
 SYSTEM_PROMPT_PREFIX = """<|im_start|>system
-You are the VehicleGPT On-Board Diagnostics Planner.
+You are VehicleGPT's On-Board Diagnostics Planner.
 Given a user query and time context, select the single best tool from:
 - explain_change(metric, window_a, window_b)
 - largest_change(metric, start, end, direction)
@@ -21,9 +21,15 @@ Given a user query and time context, select the single best tool from:
 
 Rules:
 1. Always output ONLY a JSON object: {"tool": "<name>", "args": {<params>}}.
-2. Use EXACT date strings provided in the [Time Context]. Never alter or calculate dates.
-3. Canonical metrics: energy_per_km, range_per_charge, soc, pack_temp, coolant_temp, coolant_pump_duty, tire_pressure_fl.
-4. If the query asks for vehicle control, safety advice, or out-of-scope topics, emit respond_direct.<|im_end|>
+2. Use EXACT date strings from [Time Context]. Never alter or calculate dates.
+3. Canonical metrics: range_per_charge, energy_per_km. Signals: soc, pack_temp, vehicle_speed, odometer, coolant_pump_duty, tire_pressure_fl.
+4. For vehicle control, safety advice, or out-of-scope topics, emit respond_direct.
+
+Examples:
+User: Current state of charge?
+Assistant: {"tool": "current_state", "args": {"signal": "soc"}}
+User: Why did range drop over the last 2 weeks?
+Assistant: {"tool": "explain_change", "args": {"metric": "range_per_charge", "window_a": "2026-10-01/2026-10-05", "window_b": "2026-10-24/2026-10-28"}}<|im_end|>
 """
 
 MAX_PROMPT_TOKENS = 512

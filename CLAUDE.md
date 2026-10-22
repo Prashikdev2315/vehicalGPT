@@ -20,7 +20,7 @@ The model never writes SQL, never reads raw signals, never invents causes or num
 
 ## Contracts (source of truth)
 - `docs/schema.sql` — SQLite schema
-- `docs/tools.schema.json` — the only actions the model can emit
+- `docs/tools.schema.json` — the only actions the model can emit (Note: `timeline_before` args `anyOf` sub-schemas explicitly declare `"type": "object"` for llama.cpp GBNF compiler compatibility; semantics strictly unchanged)
 - `docs/evidence_packet.schema.json` — what tools return and what the verbaliser may use
 - `docs/signals.dbc` + `docs/signal_catalog.csv` — simulated vehicle signals (create in M1; ask me if the signal list is unclear)
 

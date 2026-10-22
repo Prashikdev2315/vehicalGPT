@@ -167,3 +167,19 @@ def test_verifier_semantic_reversal_rejected(sample_state_packet):
     res = verify_response(text, sample_state_packet)
     assert res.passed is False
     assert res.violation_type == "semantic_reversal"
+
+
+def test_verifier_displayed_precision_rounding_accepted(sample_state_packet):
+    # Finding value is 82.5. Displayed precision k=0 rounded to 83 or 82 (integer) should match
+    text = "Current battery charge is 83% [f1]."
+    res = verify_response(text, sample_state_packet)
+    assert res.passed is True
+
+
+def test_verifier_displayed_precision_rounding_rejected(sample_state_packet):
+    # Finding value is 82.5. 82.5 +/- 1% would have accepted 81.7%, but at k=1 displayed precision round(82.5, 1) is 82.5, NOT 81.7
+    text = "Current battery charge is 81.7% [f1]."
+    res = verify_response(text, sample_state_packet)
+    assert res.passed is False
+    assert res.violation_type == "ungrounded_number"
+

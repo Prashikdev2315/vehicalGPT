@@ -54,6 +54,20 @@ def get_tools_gbnf(schema_path: Path | str = SCHEMA_PATH) -> str:
 
     sanitized_schema = _sanitize_for_gbnf(schema_dict)
 
+    # Fix 1: Catalog-Enum Constraints for metric and signal arguments
+    catalog_metrics = ["range_per_charge", "energy_per_km"]
+    catalog_signals = [
+        "soc", "pack_temp", "coolant_temp", "coolant_pump_duty",
+        "vehicle_speed", "odometer", "range_estimate", "tire_pressure_fl",
+        "ambient_temp", "cabin_temp", "motor_power", "regen_power"
+    ]
+    for branch in sanitized_schema.get("oneOf", []):
+        props = branch.get("properties", {}).get("args", {}).get("properties", {})
+        if "metric" in props:
+            props["metric"] = {"type": "string", "enum": catalog_metrics}
+        if "signal" in props:
+            props["signal"] = {"type": "string", "enum": catalog_signals}
+
     # Ensure any sub-schema inside anyOf specifies type: object for GBNF parser compatibility
     for branch in sanitized_schema.get("oneOf", []):
         args = branch.get("properties", {}).get("args", {})

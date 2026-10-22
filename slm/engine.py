@@ -162,6 +162,40 @@ class SLMEngine:
             if text:
                 yield text
 
+    def chat(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int = 128,
+        temperature: float = 0.0,
+    ) -> str:
+        """Execute chat completion using model chat template."""
+        self._ensure_loaded()
+        res = self._llm.create_chat_completion(
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+        return res["choices"][0]["message"]["content"].strip()
+
+    def chat_stream(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int = 128,
+        temperature: float = 0.0,
+    ) -> Generator[str, None, None]:
+        """Stream chat completion tokens using model chat template."""
+        self._ensure_loaded()
+        for chunk in self._llm.create_chat_completion(
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            stream=True,
+        ):
+            delta = chunk["choices"][0].get("delta", {})
+            content = delta.get("content", "")
+            if content:
+                yield content
+
     def benchmark(
         self,
         prompt: str = "<|im_start|>system\nYou are an automotive diagnostics planner.<|im_end|>\n<|im_start|>user\nCheck battery SOC<|im_end|>\n<|im_start|>assistant\n",

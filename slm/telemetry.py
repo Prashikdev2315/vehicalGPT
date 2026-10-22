@@ -63,3 +63,25 @@ def get_process_rss_mb() -> float:
         pass
 
     return 0.0
+
+
+def get_cgroup_peak_mb() -> float:
+    """Measure peak resident set size (RSS) or peak cgroup memory in MB."""
+    # 1. Linux container cgroup v2 peak
+    cg2 = Path("/sys/fs/cgroup/memory.peak")
+    if cg2.exists():
+        try:
+            return round(int(cg2.read_text().strip()) / (1024.0 * 1024.0), 2)
+        except Exception:
+            pass
+
+    # 2. Linux container cgroup v1 max usage
+    cg1 = Path("/sys/fs/cgroup/memory/memory.max_usage_in_bytes")
+    if cg1.exists():
+        try:
+            return round(int(cg1.read_text().strip()) / (1024.0 * 1024.0), 2)
+        except Exception:
+            pass
+
+    # Fallback to current RSS
+    return get_process_rss_mb()

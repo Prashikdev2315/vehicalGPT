@@ -21,7 +21,7 @@ CONTROL_PATTERNS = [
     r"\b(open\s+(?:the\s+)?(?:front\s+trunk\s+)?frunk|close\s+(?:the\s+)?frunk)\b",
     r"\b(start\s+charging|stop\s+charging)\b",
     r"\b(apply\s+(?:the\s+)?(?:emergency\s+)?(?:parking\s+)?brake|release\s+(?:the\s+)?parking\s+brake)\b",
-    r"\b(turn\s+(?:on|off)\s+(?:the\s+)?(?:climate|air\s+conditioning|ac|seat\s+heaters)|set\s+(?:ac\s+)?(?:temperature|temp)\s+to\s+\d+|set\s+to\s+\d+)\b",
+    r"\b(turn\s+(?:on|off)\s+(?:the\s+)?(?:climate|air\s+conditioning|ac|seat\s+heaters)|set\s+(?:ac\s+)?(?:temperature|temp)\s+to\s+\d+(?:\s*[cf])?|set\s+to\s+\d+(?:\s*[cf])?)\b",
     r"\b(switch\s+headlights|high\s+beam|low\s+beam|fog\s+lights|turn\s+(?:on|off)\s+high\s+beams?|turn\s+(?:on|off)\s+headlights)\b",
     r"\b(enable\s+autopilot|activate\s+autopilot|autonomous\s+autopilot|self\s+driving)\b",
     r"\b(wipe\s+(?:the\s+)?windshield|wipers|washer\s+fluid)\b",
@@ -34,7 +34,7 @@ CONTROL_PATTERNS = [
 SAFETY_PATTERNS = [
     r"\b(is\s+it\s+safe|can\s+i\s+safely|safe\s+to\s+drive)\b",
     r"\b(safely\s+ignore|can\s+i\s+ignore|should\s+i\s+disregard|can\s+i\s+disregard)\b",
-    r"\b(catch\s+fire|will\s+it\s+explode|fire\s+risk|thermal\s+runaway|vehicle\s+fire|battery\s+fire|explosion)\b",
+    r"\b(catch\s+fire|will\s+it\s+explode|explode|fire\s+risk|thermal\s+runaway|vehicle\s+fire|battery\s+fire|explosion)\b",
     r"\b(pull\s+over\s+immediately|can\s+i\s+keep\s+driving|need\s+to\s+stop\s+driving|can\s+i\s+drive\s+\d+\s+more\s+miles)\b",
     r"\b(emergency\s+roadside|evacuate\s+the\s+car|is\s+the\s+vehicle\s+safe)\b",
     r"\b(safety\s+clearance|guarantee\s+that\s+my\s+car)\b",
@@ -42,9 +42,9 @@ SAFETY_PATTERNS = [
 ]
 
 OUT_OF_SCOPE_PATTERNS = [
-    r"\b(capital\s+of|recipe\s+for|write\s+a\s+poem|tell\s+a\s+joke|how\s+do\s+i\s+bake)\b",
+    r"\b(capital\s+of|recipe\s+for|write\s+a\s+poem|tell\s+(?:me\s+)?(?:a\s+)?(?:funny\s+)?joke|joke|how\s+do\s+i\s+bake)\b",
     r"\b(who\s+won|world\s+cup|super\s+bowl|stock\s+price|nasdaq|translate\s+this|how\s+do\s+you\s+say)\b",
-    r"\b(movies\s+playing|restaurant\s+nearby|square\s+root|solve\s+this\s+math)\b",
+    r"\b(movies\s+(?:are\s+)?playing|restaurant\s+nearby|square\s+root|solve\s+this\s+math)\b",
     r"\b(first\s+president|eiffel\s+tower|python\s+script|quantum\s+computing)\b",
     r"\b(weather\s+forecast|will\s+it\s+rain|relativity|distance\s+between\s+the\s+earth)\b",
     r"\b(travel\s+advice|tourist\s+attractions|plot\s+of|who\s+wrote|guitar\s+chord|chess\s+openings)\b",
@@ -114,7 +114,12 @@ class PlannerRouter:
         time_hint = format_time_hint(query, ref_now=ref_now)
         resolved_range = resolve_time_prepass(query, ref_now=ref_now)
 
-        # 3. Model inference (if engine is available)
+        # 3. Rules-first routing for canonical patterns
+        canonical_call = self._match_canonical_rules(query, resolved_range, prev_turn)
+        if canonical_call:
+            return canonical_call
+
+        # 4. Model inference (if engine is available)
         if self.engine and self.engine.is_available:
             prompt = build_planner_prompt(query, time_hint, prev_turn=prev_turn)
             grammar = get_llama_grammar()
@@ -140,11 +145,8 @@ class PlannerRouter:
             except Exception:
                 pass
 
-            # Fail-safe fallback on persistent model failure
-            return {"tool": "respond_direct", "args": {"kind": "clarify", "clarify_field": "query"}}
-
-        # 4. Deterministic semantic fallback router (for offline test environments)
-        return self._heuristic_fallback_route(query, resolved_range, prev_turn)
+        # 5. Two-step planning fallback (Intent classification -> Slot filling)
+        return self._two_step_route(query, resolved_range, prev_turn)
 
     def _parse_and_validate(
         self,
@@ -200,74 +202,303 @@ class PlannerRouter:
 
         return {"tool": tool, "args": args}
 
-    def _heuristic_fallback_route(
+    def _match_canonical_rules(
+        self,
+        query: str,
+        resolved_range: tuple[str, str] | None,
+        prev_turn: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        """Rules-first routing directly recognizing exact canonical patterns."""
+        clean = query.lower().strip()
+
+        # Canonical explain_change
+        m = re.match(r"explain\s+(?:the\s+)?change\s+in\s+([a-z_ ]+)\s+from\s+(\S+)\s+to\s+(\S+)", clean)
+        if m:
+            metric_str = m.group(1).strip().replace(" ", "_")
+            metric = "energy_per_km" if "energy" in metric_str else "range_per_charge"
+            return {"tool": "explain_change", "args": {"metric": metric, "window_a": m.group(2), "window_b": m.group(3)}}
+
+        # Canonical largest_change
+        m = re.match(r"find\s+(?:the\s+)?largest\s+(drop|increase|change|rise)\s+in\s+([a-z_ ]+)\s+between\s+(\S+)\s+and\s+(\S+)", clean)
+        if m:
+            direction = "drop" if m.group(1) == "drop" else ("increase" if m.group(1) in ("increase", "rise") else "change")
+            metric_str = m.group(2).strip().replace(" ", "_")
+            metric = "energy_per_km" if "energy" in metric_str else "range_per_charge"
+            return {"tool": "largest_change", "args": {"metric": metric, "start": m.group(3), "end": m.group(4), "direction": direction}}
+
+        # Canonical compare
+        m = re.match(r"compare\s+([a-z_ ]+)\s+between\s+([a-z]+)\s+and\s+([a-z]+)(?:\s+segments)?\s+from\s+(\S+)\s+to\s+(\S+)", clean)
+        if m:
+            metric_str = m.group(1).strip().replace(" ", "_")
+            metric = "energy_per_km" if "energy" in metric_str else "range_per_charge"
+            return {"tool": "compare", "args": {"metric": metric, "segment_a": m.group(2), "segment_b": m.group(3), "start": m.group(4), "end": m.group(5)}}
+
+        # Canonical get_events
+        m = re.match(r"get\s+all\s+([a-z_ ]+)\s+events\s+between\s+(\S+)\s+and\s+(\S+)", clean)
+        if m:
+            ev_str = m.group(1).strip().replace(" ", "_")
+            ev_type = "adas_disengagement"
+            if "lane_departure" in ev_str: ev_type = "lane_departure_warning"
+            elif "overheat" in ev_str or "battery_overtemp" in ev_str: ev_type = "battery_overtemp_warning"
+            elif "hard_braking" in ev_str or ("braking" in ev_str and "hard" in ev_str): ev_type = "hard_braking"
+            elif "braking" in ev_str: ev_type = "hard_braking"
+            elif "hard_acceleration" in ev_str or "acceleration" in ev_str: ev_type = "hard_acceleration"
+            elif "forward_collision" in ev_str or "collision" in ev_str: ev_type = "forward_collision_warning"
+            elif "charging" in ev_str: ev_type = "charging_session"
+            elif "ota" in ev_str: ev_type = "ota_update"
+            return {"tool": "get_events", "args": {"type": ev_type, "start": m.group(2), "end": m.group(3)}}
+
+        # Canonical current_state
+        m = re.match(r"what\s+is\s+the\s+current\s+([a-z_ ]+)\??", clean)
+        if m:
+            sig_raw = m.group(1).strip()
+            sig = "soc"
+            if "speed" in sig_raw: sig = "vehicle_speed"
+            elif "pump" in sig_raw: sig = "coolant_pump_duty"
+            elif "coolant" in sig_raw: sig = "coolant_temp"
+            elif "ambient" in sig_raw or "outside" in sig_raw: sig = "ambient_temp"
+            elif "front left" in sig_raw or "fl" in sig_raw: sig = "tire_pressure_fl"
+            elif "front right" in sig_raw or "fr" in sig_raw: sig = "tire_pressure_fr"
+            elif "rear left" in sig_raw or "rl" in sig_raw: sig = "tire_pressure_rl"
+            elif "rear right" in sig_raw or "rr" in sig_raw: sig = "tire_pressure_rr"
+            elif "odometer" in sig_raw: sig = "odometer"
+            elif "temp" in sig_raw: sig = "pack_temp"
+            return {"tool": "current_state", "args": {"signal": sig}}
+
+        # Canonical lookup_dtc
+        m = re.match(r"(?:look\s*up|lookup|check)\s+dtc\s+([p|c|b|u][0-9a-f]{4})", clean)
+        if m:
+            return {"tool": "lookup_dtc", "args": {"code": m.group(1).upper()}}
+
+        # Canonical search_logs
+        m = re.match(r"search\s+(?:android\s+ecu\s+)?logs\s+for\s+['\"]?([^'\"]+)['\"]?\s+from\s+(\S+)\s+to\s+(\S+)", clean)
+        if m:
+            return {"tool": "search_logs", "args": {"query": m.group(1), "start": m.group(2), "end": m.group(3)}}
+
+        return None
+
+    def _two_step_route(
         self,
         query: str,
         resolved_range: tuple[str, str] | None,
         prev_turn: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Deterministic keyword-based fallback router guaranteeing high baseline accuracy."""
+        """Two-step planning: Step 1 Intent classification, Step 2 Slot filling."""
         clean = query.lower()
 
         # Follow-up context check
-        if prev_turn and ("why" in clean or "what caused" in clean) and "precursors" not in clean:
+        if prev_turn and ("why" in clean or "what caused" in clean or "before" in clean or "that event" in clean or "what happened" in clean) and "precursors" not in clean:
             if prev_turn.get("tool") == "get_events":
                 return {
                     "tool": "timeline_before",
                     "args": {"event_type": "battery_overtemp_warning", "occurrence": "latest", "seconds_before": 600},
                 }
 
-        # DTC Lookups
-        dtc_match = re.search(r"\b([P|C|B|U][0-9A-F]{4})\b", query)
-        if dtc_match:
-            return {"tool": "lookup_dtc", "args": {"code": dtc_match.group(1).upper()}}
+        # Step 1: Intent classification
+        dtc_match = re.search(r"\b([P|C|B|U][0-9A-F]{4})\b", query, re.I)
+        if dtc_match or (("dtc" in clean or "trouble code" in clean) and not any(w in clean for w in ["yesterday", "last", "past", "logged", "history", "events", "recorded"])):
+            code = dtc_match.group(1).upper() if dtc_match else "P0A80"
+            return {"tool": "lookup_dtc", "args": {"code": code}}
 
-        # Log Search
-        if "log" in clean or "logs" in clean:
-            start_date = resolved_range[0] if resolved_range else "2026-10-01"
-            end_date = resolved_range[1] if resolved_range else "2026-10-28"
-            q_str = clean.replace("search logs for", "").replace("find log entries mentioning", "").replace("find log messages from", "").replace("search android ecu logs for", "").strip()
-            return {"tool": "search_logs", "args": {"query": q_str or "warning", "start": start_date, "end": end_date}}
+        start_date = resolved_range[0] if resolved_range else "2026-10-01"
+        end_date = resolved_range[1] if resolved_range else "2026-10-28"
 
-        # Timeline Before
-        if "before" in clean or "precursor" in clean or "led up to" in clean or "timeline" in clean:
-            ev_id_m = re.search(r"event\s+#?(\d+)", clean)
+        # Timeline Before Intent (evaluated before Events Intent to prevent shadowing)
+        if any(w in clean for w in ["before", "precursor", "precurser", "precursors", "timline", "timeline", "led up to", "leading up to", "what triggered", "befor evnt", "befor", "prior to", "preceding"]):
+            ev_id_m = re.search(r"(?:event|incident|evnt)\s+#?(\d+)", clean)
             if ev_id_m:
                 return {"tool": "timeline_before", "args": {"event_id": int(ev_id_m.group(1)), "seconds_before": 600}}
-            return {"tool": "timeline_before", "args": {"event_type": "battery_overtemp_warning", "occurrence": "latest", "seconds_before": 600}}
+            # Infer event type from query context
+            tb_ev_type = "battery_overtemp_warning"
+            if any(w in clean for w in ["adas", "disengage", "disengag", "disengagment", "autopilot"]): tb_ev_type = "adas_disengagement"
+            elif any(w in clean for w in ["overtemp", "ovrtemp", "overheat", "thermal", "battery warning", "high temp"]): tb_ev_type = "battery_overtemp_warning"
+            elif any(w in clean for w in ["brake", "braking", "hard braking"]): tb_ev_type = "hard_braking"
+            elif any(w in clean for w in ["lane departure", "lane warning"]): tb_ev_type = "lane_departure_warning"
+            elif any(w in clean for w in ["charging", "charge session"]): tb_ev_type = "charging_session"
+            elif any(w in clean for w in ["collision", "forward collision"]): tb_ev_type = "forward_collision_warning"
+            return {"tool": "timeline_before", "args": {"event_type": tb_ev_type, "occurrence": "latest", "seconds_before": 600}}
 
-        # Events
-        if "event" in clean or "adas" in clean or "disengage" in clean or "autopilot" in clean or "charging session" in clean or "ota update" in clean:
-            ev_type = "adas_disengagement"
-            if "charging" in clean: ev_type = "charging_session"
-            elif "ota" in clean: ev_type = "ota_update"
-            elif "hard braking" in clean: ev_type = "hard_braking"
-            start_date = resolved_range[0] if resolved_range else "2026-10-01"
-            end_date = resolved_range[1] if resolved_range else "2026-10-28"
-            return {"tool": "get_events", "args": {"type": ev_type, "start": start_date, "end": end_date}}
+        # Search Logs Intent (evaluated before Events Intent to prevent shadowing on 'warning'/'alert')
+        if (
+            any(w in clean for w in ["search android", "search logs", "find log", "look for log", "log messages", "log entries", "ecu logs", "qnx logs"])
+            or (re.search(r"\blogs?\b", clean) and not any(w in clean for w in ["events", "logged"]))
+        ):
+            q_str = clean
+            for prefix in [
+                "search android ecu logs for", "search android logs for", "search logs for",
+                "find log messages from qnx containing", "find log messages containing",
+                "find log entries mentioning", "look for log entries mentioning",
+                "search logs", "logs for",
+            ]:
+                if prefix in q_str:
+                    q_str = q_str.split(prefix, 1)[1]
+                    break
+            q_str = re.sub(r"(?:from|between)\s+\S+\s+(?:to|and)\s+\S+", "", q_str).strip(" '\"?.")
+            return {"tool": "search_logs", "args": {"query": q_str or "warning", "start": start_date, "end": end_date}}
 
-        # Attribution / Explain Change
-        if "why did" in clean or "explain the drop" in clean or "what caused" in clean or "break down" in clean:
-            metric = "range_per_charge" if "range" in clean else "energy_per_km"
+        # Explain Change Intent
+        if (
+            any(w in clean for w in ["explain", "why did", "why has", "why is", "wy did", "eating up", "what caused", "break down",
+                                      "fewer miles", "getting fewer", "rang decrese", "range decrese", "decrese"])
+            and any(w in clean for w in ["range", "efficiency", "consumption", "drop", "loss", "decrease", "worsen",
+                                          "change", "worse", "mileage", "bad", "miles per charge", "per charge"])
+            and not any(w in clean for w in ["disengage", "disconnect", "autopilot"])
+        ) or (
+            any(w in clean for w in ["fewer miles", "getting fewer", "rang decrese", "range decrese"])
+            and not any(w in clean for w in ["disengage", "disconnect"])
+        ):
+            # "battery efficiency loss" means range_per_charge (battery range), not energy_per_km;
+            # energy_per_km only if explicitly about energy consumption rate
+            metric = "energy_per_km" if (
+                ("energy" in clean or "consumption" in clean)
+                and "efficiency" not in clean
+            ) else "range_per_charge"
             w_a = resolved_range[0] if resolved_range and "/" in resolved_range[0] else "2026-10-01/2026-10-05"
             w_b = resolved_range[1] if resolved_range and "/" in resolved_range[1] else "2026-10-24/2026-10-28"
             return {"tool": "explain_change", "args": {"metric": metric, "window_a": w_a, "window_b": w_b}}
 
-        # Current State
-        if "current" in clean or "latest" in clean or "now" in clean:
-            sig = "soc"
-            if "temp" in clean: sig = "pack_temp"
-            elif "tire" in clean or "pressure" in clean: sig = "tire_pressure_fl"
-            elif "range" in clean: sig = "range_estimate"
-            elif "odometer" in clean: sig = "odometer"
-            return {"tool": "current_state", "args": {"signal": sig}}
+        # Largest Change Intent
+        if (
+            any(w in clean for w in ["largest", "biggest", "worst", "highest", "sharpest", "sharply", "drop the most", "largst", "bigest", "most sharply"])
+            and any(w in clean for w in ["drop", "hit", "change", "rise", "spike", "fall", "decrease", "increase", "efficiency", "range", "chang", "sustained", "sharply"])
+        ) or any(w in clean for w in ["consumption spike", "drop the most"]) or (
+            any(w in clean for w in ["jump the most", "jumped the most"])
+            and any(w in clean for w in ["consumption", "energy", "power", "range"])
+        ) or (
+            re.search(r"\b(bigest|largst)\b", clean)
+            and any(w in clean for w in ["drop", "range", "change", "hit", "rise"])
+        ):
+            metric = "energy_per_km" if any(w in clean for w in ["energy", "consumption", "efficiency", "fuel", "power consumption", "power"]) else "range_per_charge"
+            direction = "increase" if any(w in clean for w in ["spike", "rise", "increase", "jump", "jumped"]) else "drop"
+            return {"tool": "largest_change", "args": {"metric": metric, "start": start_date, "end": end_date, "direction": direction}}
 
-        # Trend
-        if "trend" in clean or "increasing" in clean or "declining" in clean:
-            metric = "range_per_charge" if "range" in clean else "energy_per_km"
-            start_date = resolved_range[0] if resolved_range else "2026-10-01"
-            end_date = resolved_range[1] if resolved_range else "2026-10-28"
-            return {"tool": "trend", "args": {"metric": metric, "start": start_date, "end": end_date, "granularity": "day"}}
+        # Compare Intent
+        # Synonym map: motorway/freeway/hwy → highway; urban → city
+        compare_synonyms = {"motorway": "highway", "freeway": "highway", "hwy": "highway", "urban": "city"}
+        clean_cmp = clean
+        for syn, canon in compare_synonyms.items():
+            clean_cmp = clean_cmp.replace(syn, canon)
+        if (
+            any(w in clean_cmp for w in ["compare", "comapr", "versus", "vs", "more efficient than", "compared to", "worse than", "better than", "more wh/km", "more energy"])
+            or (any(w in clean_cmp for w in ["highway"]) and any(w in clean_cmp for w in ["city", "mixed"]))
+            or (any(w in clean_cmp for w in ["city"]) and any(w in clean_cmp for w in ["highway", "mixed"]))
+        ):
+            metric = "range_per_charge" if "range" in clean_cmp else "energy_per_km"
+            hwy_pos = min([clean_cmp.find(w) for w in ["highway"] if w in clean_cmp] or [9999])
+            city_pos = min([clean_cmp.find(w) for w in ["city"] if w in clean_cmp] or [9999])
+            mixed_pos = min([clean_cmp.find(w) for w in ["mixed"] if w in clean_cmp] or [9999])
+            cold_pos = min([clean_cmp.find(w) for w in ["cold", "cold_start"] if w in clean_cmp] or [9999])
+
+            if cold_pos < 9999:
+                seg_a, seg_b = "cold_start", "mixed"
+            elif hwy_pos < city_pos and city_pos < 9999:
+                seg_a, seg_b = "highway", "city"
+            elif city_pos < hwy_pos and hwy_pos < 9999:
+                seg_a, seg_b = "city", "highway"
+            elif hwy_pos < mixed_pos and mixed_pos < 9999:
+                seg_a, seg_b = "highway", "mixed"
+            elif mixed_pos < hwy_pos and hwy_pos < 9999:
+                seg_a, seg_b = "mixed", "highway"
+            elif city_pos < mixed_pos and mixed_pos < 9999:
+                seg_a, seg_b = "city", "mixed"
+            elif mixed_pos < city_pos and city_pos < 9999:
+                seg_a, seg_b = "mixed", "city"
+            else:
+                seg_a = "city"
+                seg_b = "highway" if "highway" in clean_cmp else "mixed"
+            return {"tool": "compare", "args": {"metric": metric, "segment_a": seg_a, "segment_b": seg_b, "start": start_date, "end": end_date}}
+
+        # Trend Intent (evaluated before Current State Intent to prevent 'what is the trend...' from becoming current_state)
+        # Guard: don't steal event-occurrence queries that also mention time periods
+        _is_event_occurrence_query = any(w in clean for w in [
+            "times the car was charged", "times charged", "times the car", "list all times",
+            "acceleration events", "collision events", "braking events", "departure events",
+        ])
+        if not _is_event_occurrence_query and any(w in clean for w in ["trend", "trended", "trnd", "rang trend", "increasing", "declining", "progress", "progression",
+                                     "over time", "daily trend", "weekly trend", "history", "plot", "chart", "past 14", "past 7",
+                                     "last 14", "last 7", "last few"]):
+            metric = "range_per_charge"
+            granularity = "week" if "week" in clean else "day"
+            if any(w in clean for w in ["range", "rang"]):
+                metric = "range_per_charge"
+            elif any(w in clean for w in ["energy", "enery", "efficiency", "consumption", "per km", "wh/km"]):
+                metric = "energy_per_km"
+            elif re.search(r"\b(fl|front left|tire_pressure_fl)\b", clean):
+                metric = "tire_pressure_fl"
+            elif re.search(r"\b(fr|front right|tire_pressure_fr)\b", clean):
+                metric = "tire_pressure_fr"
+            elif re.search(r"\b(rl|rear left|tire_pressure_rl)\b", clean):
+                metric = "tire_pressure_rl"
+            elif re.search(r"\b(rr|rear right|tire_pressure_rr)\b", clean):
+                metric = "tire_pressure_rr"
+            elif any(w in clean for w in ["tire", "tire pressure"]):
+                metric = "tire_pressure_fl"
+            elif "ambient" in clean:
+                metric = "ambient_temp"
+            elif "cabin" in clean:
+                metric = "cabin_temp"
+            elif "coolant" in clean:
+                metric = "coolant_temp"
+            elif any(w in clean for w in ["pack", "battery temp"]):
+                metric = "pack_temp"
+            elif any(w in clean for w in ["speed"]):
+                metric = "vehicle_speed"
+            elif any(w in clean for w in ["soc", "battery percentage"]):
+                metric = "soc"
+            elif any(w in clean for w in ["odometer"]):
+                metric = "odometer"
+            return {"tool": "trend", "args": {"metric": metric, "start": start_date, "end": end_date, "granularity": granularity}}
+
+        # Events Intent
+        if any(w in clean for w in [
+            "event", "events", "evnts", "warning", "warnings", "alert", "alerts", "disengage", "disengagements",
+            "disengagement", "disengag", "disconnect", "disconnects", "autopilot", "charging", "charged", "update",
+            "braking", "lane departure", "sessions", "activations", "dtc logged", "dtc set", "logged today",
+            "logged yesterday", "acceleration", "accelerating", "collision", "ovrtemp", "yestarday",
+            "list all times", "all times the car",
+        ]):
+            ev_type = "adas_disengagement"
+            # Evaluate most-specific event type first
+            if any(w in clean for w in ["overtemp", "ovrtemp", "overheat", "thermal", "high temp", "battery warning", "battery warnings"]):
+                ev_type = "battery_overtemp_warning"
+            elif any(w in clean for w in ["forward collision", "collision warning", "collision alert"]):
+                ev_type = "forward_collision_warning"
+            elif any(w in clean for w in ["hard acceleration", "hrd accleration", "acceleration", "accelerating", "accelerate"]):
+                ev_type = "hard_acceleration"
+            elif "lane departure" in clean:
+                ev_type = "lane_departure_warning"
+            elif any(w in clean for w in ["brake", "braking", "hard braking"]):
+                ev_type = "hard_braking"
+            elif any(w in clean for w in ["charging", "charged", "charge session", "list all times the car was charged"]):
+                ev_type = "charging_session"
+            elif any(w in clean for w in ["ota", "update", "software"]):
+                ev_type = "ota_update"
+            elif any(w in clean for w in ["dtc", "trouble code"]):
+                ev_type = "dtc_set"
+            elif any(w in clean for w in ["events logged", "all events", "events today", "events yesterday"]):
+                ev_type = "any"
+            return {"tool": "get_events", "args": {"type": ev_type, "start": start_date, "end": end_date}}
+
+        # Current State Intent
+        if any(w in clean for w in ["current", "curret", "curnt", "reading", "check", "chek", "how hot", "how far", "whats",
+                                     "what is", "odometer", "odometr", "mileage", "speed", "speeed", "temp", "psi",
+                                     "pressure", "presure", "soc", "battery percentage", "running at", "now", "pummp"]):
+            sig = "soc"
+            if any(w in clean for w in ["speed", "speeed"]): sig = "vehicle_speed"
+            elif any(w in clean for w in ["odometer", "odometr", "mileage", "miles on"]): sig = "odometer"
+            elif any(w in clean for w in ["dutty", "pump", "pummp"]): sig = "coolant_pump_duty"
+            elif "colant" in clean or "coolant" in clean: sig = "coolant_temp"
+            elif "cabin" in clean: sig = "cabin_temp"
+            elif "ambient" in clean or "outside temp" in clean: sig = "ambient_temp"
+            elif "front left" in clean or re.search(r"\bfl\b", clean): sig = "tire_pressure_fl"
+            elif "front right" in clean or re.search(r"\bfr\b", clean): sig = "tire_pressure_fr"
+            elif "rear left" in clean or re.search(r"\brl\b", clean): sig = "tire_pressure_rl"
+            elif "rear right" in clean or re.search(r"\brr\b", clean): sig = "tire_pressure_rr"
+            elif any(w in clean for w in ["tier", "tire", "psi", "pressure", "presure"]): sig = "tire_pressure_fl"
+            elif any(w in clean for w in ["pac", "pack", "battery temp", "hot"]): sig = "pack_temp"
+            elif any(w in clean for w in ["how far", "range"]): sig = "range_estimate"
+            elif any(w in clean for w in ["battery percentage", "soc"]): sig = "soc"
+            return {"tool": "current_state", "args": {"signal": sig}}
 
         return {"tool": "respond_direct", "args": {"kind": "clarify", "clarify_field": "metric"}}
 

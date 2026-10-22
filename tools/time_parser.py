@@ -64,6 +64,11 @@ def resolve_relative_time(
         parts = normalized.split("/", 1)
         return parts[0].strip(), parts[1].strip()
 
+    # Date range: "YYYY-MM-DD to YYYY-MM-DD", "between YYYY-MM-DD and YYYY-MM-DD"
+    m_range = re.match(r"^(?:between\s+)?(\d{4}-\d{2}-\d{2})\s+(?:to|and|-)\s+(\d{4}-\d{2}-\d{2})$", normalized)
+    if m_range:
+        return m_range.group(1), m_range.group(2)
+
     # Yesterday
     if normalized == "yesterday":
         y_date = ref_date - timedelta(days=1)

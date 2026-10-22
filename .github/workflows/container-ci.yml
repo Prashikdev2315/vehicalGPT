@@ -1,0 +1,128 @@
+name: VehicleGPT Container Resource & Multi-Arch CI
+
+on:
+  push:
+    branches: [main, master, milestone-3]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build-and-test:
+    name: Build & Test Multi-Arch Container (AMD64 & ARM64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU for ARM64 emulation
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ── Stage 1: Build AMD64 and ARM64 container images ──
+      - name: Build AMD64 container image
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            -t vehicalgpt:milestone3-amd64 \
+            --load \
+            .
+
+      - name: Build ARM64 container image
+        run: |
+          docker buildx build \
+            --platform linux/arm64 \
+            -t vehicalgpt:milestone3-arm64 \
+            --load \
+            .
+
+      # ── Stage 2: Unit tests under strict 2 GB memory and 2 CPUs limits on AMD64 ──
+      - name: Run unit test suite on AMD64 (2 GB memory / 2 CPUs limit)
+        run: |
+          docker run --rm \
+            --platform linux/amd64 \
+            --memory=2g \
+            --memory-swap=2g \
+            --cpus=2 \
+            --network none \
+            vehicalgpt:milestone3-amd64 \
+            python -m pytest tests/ -m "not slow" -v --tb=short
+
+      # ── Stage 3: Unit tests under strict 2 GB memory and 2 CPUs limits on ARM64 ──
+      - name: Run unit test suite on ARM64 (2 GB memory / 2 CPUs limit under QEMU)
+        run: |
+          docker run --rm \
+            --platform linux/arm64 \
+            --memory=2g \
+            --memory-swap=2g \
+            --cpus=2 \
+            --network none \
+            vehicalgpt:milestone3-arm64 \
+            python -m pytest tests/ -m "not slow" -v --tb=short
+
+      # ── Stage 4: Official planner benchmark evaluation in container ──
+      - name: Run official planner benchmark on AMD64 (2 GB memory / 2 CPUs limit)
+        run: |
+          docker run --rm \
+            --platform linux/amd64 \
+            --memory=2g \
+            --memory-swap=2g \
+            --cpus=2 \
+            --network none \
+            vehicalgpt:milestone3-amd64 \
+            python eval/eval_planner_300.py
+
+      # ── Stage 5: Fresh independent evaluation in container ──
+      - name: Run fresh independent evaluation on AMD64 (2 GB memory / 2 CPUs limit)
+        run: |
+          docker run --rm \
+            --platform linux/amd64 \
+            --memory=2g \
+            --memory-swap=2g \
+            --cpus=2 \
+            --network none \
+            vehicalgpt:milestone3-amd64 \
+            python eval/eval_fresh_independent.py
+
+      # ── Stage 6: Acquire GGUF model weights for runtime profiling ──
+      - name: Cache GGUF model weights
+        id: cache-model
+        uses: actions/cache@v4
+        with:
+          path: models/qwen2.5-1.5b-instruct-q4_k_m.gguf
+          key: gguf-qwen2.5-1.5b-instruct-v1
+
+      - name: Download GGUF model weights if not cached
+        if: steps.cache-model.outputs.cache-hit != 'true'
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install huggingface_hub
+          python3 scripts/download_model.py --dest models/
+
+      # ── Stage 7: Measure container memory during actual model generation ──
+      - name: Measure container memory during actual model generation (AMD64, 2 GB / 2 CPUs limit)
+        run: |
+          docker run --rm \
+            --platform linux/amd64 \
+            --memory=2g \
+            --memory-swap=2g \
+            --cpus=2 \
+            --network none \
+            -v ${{ github.workspace }}/models:/app/models:ro \
+            vehicalgpt:milestone3-amd64 \
+            python scripts/measure_runtime_profile.py
+
+      # ── Stage 8: Verify cgroup memory enforcement and limits ──
+      - name: Verify container cgroup memory enforcement
+        run: |
+          docker run --rm \
+            --platform linux/amd64 \
+            --memory=2g \
+            --memory-swap=2g \
+            --cpus=2 \
+            --network none \
+            vehicalgpt:milestone3-amd64 \
+            bash -c 'echo "cgroup v2 max: $(cat /sys/fs/cgroup/memory.max 2>/dev/null || echo N/A)" && echo "cgroup v1 limit: $(cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || echo N/A)"'
