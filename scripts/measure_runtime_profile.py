@@ -1,8 +1,11 @@
 """Measure real on-device SLM runtime performance profile with model loaded in memory."""
 from __future__ import annotations
 
+import argparse
 import json
+import os
 from pathlib import Path
+import sys
 import time
 from typing import Any
 
@@ -11,13 +14,18 @@ from slm.engine import get_slm_engine
 from slm.grammar import get_llama_grammar
 from slm.prompts import build_planner_prompt
 from slm.router import PlannerRouter
-from slm.telemetry import get_cgroup_peak_mb, get_process_rss_mb
+from slm.telemetry import (
+    get_cgroup_peak_mb,
+    get_process_rss_mb,
+    get_runtime_memory_profile,
+    verify_container_memory_limit,
+)
 from slm.templates import render_template_response
 from slm.verbaliser import generate_narration
 from tools.registry import dispatch_tool
 
 
-def run_profiler():
+def run_profiler(require_cgroup: bool = False, out_path: Path | None = None) -> dict[str, Any]:
     print("Loading SLM engine (measuring cold load time)...")
     t0 = time.perf_counter()
     engine = get_slm_engine(n_ctx=1024, n_threads=2)
@@ -102,14 +110,32 @@ def run_profiler():
 
     peak_rss = get_process_rss_mb()
     peak_cgroup = get_cgroup_peak_mb()
-    highest_mem = max(peak_rss, peak_cgroup)
+
+    mem_profile = get_runtime_memory_profile(during_model_execution=True)
+    cgroup_verified, cgroup_msg, cgroup_snap = verify_container_memory_limit()
+
+    # Determine limit and headroom based strictly on verified cgroups
+    if cgroup_verified and cgroup_snap.limit_mb is not None:
+        container_limit_mb = cgroup_snap.limit_mb
+        cgroup_status = cgroup_snap.status
+        headroom_mb = round(container_limit_mb - peak_cgroup, 2) if peak_cgroup is not None else None
+    else:
+        container_limit_mb = None
+        cgroup_status = cgroup_snap.status if cgroup_snap.cgroup_version is not None else "BLOCKED_NO_CGROUP"
+        headroom_mb = None
 
     report = {
         "model_load_time_sec": load_time_sec,
-        "rss_with_model_loaded_mb": peak_rss,
-        "peak_cgroup_memory_mb": highest_mem,
-        "container_memory_limit_mb": 2048.0,
-        "actual_container_headroom_mb": round(2048.0 - highest_mem, 2),
+        "during_model_execution": True,
+        "host_process_rss_mb": peak_rss,
+        "host_memory_source": mem_profile.get("host_memory_source"),
+        "peak_cgroup_memory_mb": peak_cgroup,
+        "container_memory_limit_mb": container_limit_mb,
+        "actual_container_headroom_mb": headroom_mb,
+        "cgroup_enforced_2gb": cgroup_verified,
+        "cgroup_verification_status": cgroup_status,
+        "cgroup_verification_message": cgroup_msg,
+        "cgroup_snapshot": cgroup_snap.to_dict(),
         "prompt_tokens": p_tokens,
         "generation_tokens": c_tokens,
         "tokens_per_second": round(c_tokens / total_time, 2),
@@ -127,8 +153,44 @@ def run_profiler():
 
     print("\n================ PROFILE SUMMARY ================")
     print(json.dumps(report, indent=2))
+
+    if out_path:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        print(f"Wrote profile report to {out_path}")
+
+    if not cgroup_verified:
+        if require_cgroup:
+            print(
+                f"\n[FAIL] --require-cgroup specified but container memory limit <= 2GB could not be confirmed!\n"
+                f"Status: {cgroup_status}\n"
+                f"Details: {cgroup_msg}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        else:
+            print(
+                f"\n[NOTICE] Cgroup limit unverified on current environment ({cgroup_status}).\n"
+                f"Details: {cgroup_msg}\n"
+                f"Host process RSS is {peak_rss} MB ({mem_profile.get('host_memory_source')}).\n"
+                f"True 2GB container enforcement requires execution inside a capped Linux container.\n"
+            )
+
     return report
 
 
 if __name__ == "__main__":
-    run_profiler()
+    parser = argparse.ArgumentParser(description="Measure on-device SLM runtime performance profile.")
+    parser.add_argument(
+        "--require-cgroup",
+        action="store_true",
+        help="Exit with code 1 if container cgroup <= 2GB limit is not verified.",
+    )
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Path to write JSON profile report.",
+    )
+    args = parser.parse_args()
+    run_profiler(require_cgroup=args.require_cgroup, out_path=args.out)
