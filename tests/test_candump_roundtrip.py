@@ -20,10 +20,10 @@ def candump_data(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, 
                     ground_truth_path=tmp / "gt.json")
     generate_history(days=2, seed=42, out_db=db_path, cfg=cfg)
 
-    # Write candump for a 10-minute window
-    base_epoch = int(cfg.get_base_datetime(2).timestamp() * 1000)
-    # Day 1, 8:00 AM, 10 minutes
-    start = base_epoch + int(1 * 24 * 3600 * 1000) + int(8 * 3600 * 1000)
+    # Write candump for a 10-minute window during active driving
+    conn = sqlite3.connect(str(db_path))
+    start = conn.execute("SELECT MIN(ts) FROM signals").fetchone()[0]
+    conn.close()
     candump_path = tmp / "test.log"
     write_candump(db_path, candump_path, start, 10 * 60 * 1000,
                   Path("docs/signals.dbc"))
@@ -31,6 +31,8 @@ def candump_data(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, 
     return db_path, candump_path, Path("docs/signals.dbc")
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 class TestCandumpRoundtrip:
     def test_candump_file_created(self, candump_data: tuple[Path, Path, Path]) -> None:
         _, candump_path, _ = candump_data

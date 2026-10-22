@@ -84,23 +84,24 @@
     "id": "S4",
     "scenario": "ADAS disengagements",
     "ts_start": 1793903400000,
-    "ts_end": 1794940164000,
+    "ts_end": 1795372164000,
     "cause": "various_adas_triggers",
     "signals": [
       "adas_state",
       "disengagement_reason"
     ],
     "expected_facts": [
-      "Total 7 disengagement events",
-      "Events on days [10, 14, 21]"
+      "Total 10 disengagement events",
+      "Events on days [10, 14, 21, 26]"
     ],
     "event_type": "adas_disengagement",
     "extra": {
-      "event_count": 7,
+      "event_count": 10,
       "days": [
         10,
         14,
-        21
+        21,
+        26
       ]
     }
   },

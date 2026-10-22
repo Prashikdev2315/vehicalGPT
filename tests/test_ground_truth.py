@@ -25,6 +25,8 @@ def sim_db(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path]:
     return db_path, gt_path
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 class TestGroundTruth:
     def test_ground_truth_file_exists(self, sim_db: tuple[Path, Path]) -> None:
         _, gt_path = sim_db

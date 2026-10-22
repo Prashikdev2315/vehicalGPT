@@ -21,6 +21,8 @@ def snapshot_db(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return db_path
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 class TestEventSnapshots:
     def test_snapshots_table_populated(self, snapshot_db: Path) -> None:
         conn = sqlite3.connect(str(snapshot_db))

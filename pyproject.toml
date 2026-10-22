@@ -13,6 +13,7 @@ dependencies = [
     "numpy>=1.24.0",
     "msgpack>=1.0.0",
     "tzdata",
+    "jsonschema>=4.0.0",
 ]
 
 [project.optional-dependencies]
@@ -27,6 +28,10 @@ include = ["ingest*", "store*", "insight*", "tools*", "llm*", "sim*", "eval*", "
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks integration tests that generate full simulations or stream sockets",
+]
 
 [tool.mypy]
 python_version = "3.11"

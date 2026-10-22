@@ -498,12 +498,12 @@ def generate_history(
         base_days = rpc_rows[0:min(5, len(rpc_rows))]
         base_rpc = sum(r[1] for r in base_days) / len(base_days)
 
-        # S1: pre-OTA cooled work week (Days 15-17)
-        if len(rpc_rows) >= 17:
-            s1_days = rpc_rows[14:17]
+        # S1: pre-OTA cooled window (Days 10-15)
+        if len(rpc_rows) >= 15:
+            s1_days = rpc_rows[9:15]
             s1_rpc = sum(r[1] for r in s1_days) / len(s1_days)
             s1_drop_pct = (base_rpc - s1_rpc) / base_rpc * 100.0
-            s1_w_str = f"days 15-17 ({s1_days[0][0]} to {s1_days[-1][0]})"
+            s1_w_str = f"days 10-15 ({s1_days[0][0]} to {s1_days[-1][0]})"
         else:
             s1_rpc = base_rpc * 0.88
             s1_drop_pct = 12.0

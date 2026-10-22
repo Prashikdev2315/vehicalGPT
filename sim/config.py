@@ -131,7 +131,7 @@ class SimConfig:
     s3_pump_degradation_minutes: int = 10
 
     # S4 ADAS disengagements
-    s4_event_days: tuple[int, ...] = (10, 14, 21)
+    s4_event_days: tuple[int, ...] = (10, 14, 21, 26)
 
     # S6 Tire leak
     s6_start_day: int = 10

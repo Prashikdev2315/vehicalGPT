@@ -20,6 +20,8 @@ def sim_db_derived(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return db_path
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 class TestDerivedMetrics:
     def test_s1_range_drop_within_documented_tolerance(self, sim_db_derived: Path) -> None:
         """Verify S1 range reduction is within the documented ~10-15% tolerance."""
@@ -35,8 +37,8 @@ class TestDerivedMetrics:
         base_days = rows[0:5]
         base_rpc = sum(r[1] for r in base_days) / len(base_days)
 
-        # Day 15-17 (S1 cooled state before S2 OTA update, weekday commute)
-        s1_days = rows[14:17]
+        # Days 10-15 (S1 cooled state before S2 OTA update)
+        s1_days = rows[9:15]
         s1_rpc = sum(r[1] for r in s1_days) / len(s1_days)
 
         drop_pct = (base_rpc - s1_rpc) / base_rpc * 100.0

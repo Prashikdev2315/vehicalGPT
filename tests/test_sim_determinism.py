@@ -25,6 +25,7 @@ def _row_hash(db_path: Path) -> dict[str, list[tuple]]:
     return result
 
 
+@pytest.mark.slow
 @pytest.mark.timeout(120)
 class TestSimDeterminism:
     def test_same_seed_identical_output(self, tmp_path: Path) -> None:

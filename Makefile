@@ -26,8 +26,7 @@ test:
 	$(PY) -m pytest tests/ -v --tb=short
 
 eval:
-	@echo "Eval harness not yet implemented (M2)."
-	@exit 0
+	$(PY) eval/run_eval.py --split all
 
 lowmem:
 	docker compose up --build
