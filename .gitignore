@@ -22,6 +22,7 @@ data/*.db-shm
 data/*.db-wal
 data/candump/*
 !data/candump/.gitkeep
+models/
 
 # OS
 .DS_Store

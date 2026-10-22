@@ -1,0 +1,97 @@
+{
+  "timestamp": "2026-10-22T16:08:13.624953+00:00",
+  "total_queries": 5,
+  "dev": {
+    "total": 3,
+    "correct": 0,
+    "answer_correctness_pct": 0.0
+  },
+  "test": {
+    "total": 2,
+    "correct": 1,
+    "answer_correctness_pct": 50.0,
+    "status": "HELD_OUT_NEVER_TUNED"
+  },
+  "latency": {
+    "time_to_first_answer_ms_p50": 7097.16,
+    "time_to_first_answer_ms_p95": 11576.48,
+    "time_to_first_answer_ms_max": 12306.75,
+    "time_to_full_narration_ms_p50": 7097.16,
+    "time_to_full_narration_ms_p95": 11576.48
+  },
+  "tokens_per_sec": {
+    "verbaliser_tok_per_sec_avg": 0.0
+  },
+  "memory": {
+    "peak_rss_mb": 3796.91,
+    "cgroup_memory_cap_mb": 2048.0,
+    "headroom_mb": -1748.91
+  },
+  "items": [
+    {
+      "id": "bm_001",
+      "split": "dev",
+      "query": "Why did my range drop over the last 2 weeks?",
+      "tool": "respond_direct",
+      "ttfa_ms": 12306.75,
+      "ttfn_ms": 12306.75,
+      "verified": true,
+      "violation_reason": null,
+      "correct": false,
+      "first_answer": "Data unavailable (signal_unknown): Invalid arguments for tool 'respond_direct': {'tool': 'respond_direct', 'args': {'kind': 'clarify', 'clarify_field': 'query'}} is not valid under any of the given schemas.",
+      "final_answer": "Data unavailable (signal_unknown): Invalid arguments for tool 'respond_direct': {'tool': 'respond_direct', 'args': {'kind': 'clarify', 'clarify_field': 'query'}} is not valid under any of the given schemas."
+    },
+    {
+      "id": "bm_002",
+      "split": "test",
+      "query": "Why has my battery range decreased recently?",
+      "tool": "compare",
+      "ttfa_ms": 4619.83,
+      "ttfn_ms": 4619.83,
+      "verified": true,
+      "violation_reason": "Verbaliser exception: 'SLMEngine' object has no attribute 'chat'",
+      "correct": false,
+      "first_answer": "No events were found matching the requested criteria.",
+      "final_answer": "No events were found matching the requested criteria."
+    },
+    {
+      "id": "bm_003",
+      "split": "dev",
+      "query": "Explain the drop in range per charge between early October and late October",
+      "tool": "respond_direct",
+      "ttfa_ms": 8655.38,
+      "ttfn_ms": 8655.38,
+      "verified": true,
+      "violation_reason": null,
+      "correct": false,
+      "first_answer": "Data unavailable (signal_unknown): Invalid arguments for tool 'respond_direct': {'tool': 'respond_direct', 'args': {'kind': 'clarify', 'clarify_field': 'query'}} is not valid under any of the given schemas.",
+      "final_answer": "Data unavailable (signal_unknown): Invalid arguments for tool 'respond_direct': {'tool': 'respond_direct', 'args': {'kind': 'clarify', 'clarify_field': 'query'}} is not valid under any of the given schemas."
+    },
+    {
+      "id": "bm_004",
+      "split": "test",
+      "query": "What caused the vehicle efficiency to worsen this month?",
+      "tool": "largest_change",
+      "ttfa_ms": 4347.69,
+      "ttfn_ms": 4347.69,
+      "verified": true,
+      "violation_reason": "Verbaliser exception: 'SLMEngine' object has no attribute 'chat'",
+      "correct": true,
+      "first_answer": "Largest sustained energy_per_km drop occurred around 2026-10-03: shifted 28.9% (rose from 90.99 to 117.27 Wh/km) [f1]. Mean before change: 90.99 Wh/km (n=2); mean after: 117.27 Wh/km (n=26). Net shift: +26.28 Wh/km [f2].",
+      "final_answer": "Largest sustained energy_per_km drop occurred around 2026-10-03: shifted 28.9% (rose from 90.99 to 117.27 Wh/km) [f1]. Mean before change: 90.99 Wh/km (n=2); mean after: 117.27 Wh/km (n=26). Net shift: +26.28 Wh/km [f2]."
+    },
+    {
+      "id": "bm_005",
+      "split": "dev",
+      "query": "Break down the causes of the range loss over the last two weeks",
+      "tool": "respond_direct",
+      "ttfa_ms": 7097.16,
+      "ttfn_ms": 7097.16,
+      "verified": true,
+      "violation_reason": null,
+      "correct": false,
+      "first_answer": "Data unavailable (signal_unknown): Invalid arguments for tool 'respond_direct': {'tool': 'respond_direct', 'args': {'kind': 'clarify', 'clarify_field': 'query'}} is not valid under any of the given schemas.",
+      "final_answer": "Data unavailable (signal_unknown): Invalid arguments for tool 'respond_direct': {'tool': 'respond_direct', 'args': {'kind': 'clarify', 'clarify_field': 'query'}} is not valid under any of the given schemas."
+    }
+  ]
+}

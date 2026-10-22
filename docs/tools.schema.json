@@ -148,8 +148,8 @@
             "seconds_before": { "type": "integer", "minimum": 10, "maximum": 3600, "default": 600 }
           },
           "anyOf": [
-            { "required": ["event_id"] },
-            { "required": ["event_type"] }
+            { "type": "object", "required": ["event_id"] },
+            { "type": "object", "required": ["event_type"] }
           ],
           "additionalProperties": false
         }

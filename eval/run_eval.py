@@ -12,9 +12,14 @@ import datetime
 import json
 import os
 from pathlib import Path
+import sys
 import time
 from typing import Any
 import numpy as np
+
+WORKSPACE_ROOT = Path(__file__).resolve().parent.parent
+if str(WORKSPACE_ROOT) not in sys.path:
+    sys.path.insert(0, str(WORKSPACE_ROOT))
 
 if os.name == "nt":
     from ctypes import wintypes

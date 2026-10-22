@@ -1,11 +1,35 @@
-FROM python:3.11-slim
+# Stage 1: Build environment for llama-cpp-python and native wheels
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        gcc \
+        g++ \
+        cmake \
+        python3-dev \
+        build-essential && \
+    rm -rf /var/lib/apt/lists/*
+
+# Portable CPU compile flags for llama.cpp (AVX2 + FMA + AVX, no platform-locked microarchitectures)
+ENV CMAKE_ARGS="-DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_AVX=ON"
+RUN pip install --no-cache-dir wheel && \
+    pip wheel --no-cache-dir --wheel-dir=/build/wheels llama-cpp-python==0.3.36
+
+# Stage 2: Minimal runtime image
+FROM python:3.11-slim AS runtime
 
 WORKDIR /app
 
-# Install system build dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc python3-dev && \
+    apt-get install -y --no-install-recommends \
+        libgomp1 && \
     rm -rf /var/lib/apt/lists/*
+
+# Copy pre-compiled wheels from builder stage
+COPY --from=builder /build/wheels /wheels
+RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
 
 # Copy project files
 COPY pyproject.toml README.md ./
@@ -14,16 +38,18 @@ COPY store/ ./store/
 COPY insight/ ./insight/
 COPY tools/ ./tools/
 COPY llm/ ./llm/
+COPY slm/ ./slm/
 COPY sim/ ./sim/
 COPY eval/ ./eval/
 COPY ui/ ./ui/
 COPY docs/ ./docs/
 COPY tests/ ./tests/
 COPY fixtures/ ./fixtures/
+COPY scripts/ ./scripts/
 COPY Makefile ./
 
 # Install project and dev dependencies
 RUN pip install --no-cache-dir -e ".[dev]"
 
-# Default: run tests
+# Default: run test suite
 CMD ["python", "-m", "pytest", "tests/", "-v", "--tb=short"]

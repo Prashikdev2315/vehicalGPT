@@ -28,6 +28,15 @@ test:
 eval:
 	$(PY) eval/run_eval.py --split all
 
+eval-planner:
+	$(PY) eval/eval_planner_300.py
+
+eval-e2e:
+	$(PY) eval/eval_e2e.py
+
+download-model:
+	$(PY) scripts/download_model.py
+
 lowmem:
 	docker compose up --build
 

@@ -14,6 +14,8 @@ dependencies = [
     "msgpack>=1.0.0",
     "tzdata",
     "jsonschema>=4.0.0",
+    "llama-cpp-python==0.3.36",
+    "huggingface_hub>=0.20.0",
 ]
 
 [project.optional-dependencies]
@@ -23,7 +25,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["ingest*", "store*", "insight*", "tools*", "llm*", "sim*", "eval*", "ui*"]
+include = ["ingest*", "store*", "insight*", "tools*", "llm*", "slm*", "sim*", "eval*", "ui*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

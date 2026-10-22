@@ -1,0 +1,417 @@
+{
+  "timestamp": "2026-10-22T16:05:38.876949+00:00",
+  "benchmark_file": "eval\\planner_benchmark_300.json",
+  "model_plus_gate": {
+    "dev": {
+      "split": "dev",
+      "total_items": 160,
+      "tool_accuracy_pct": 74.38,
+      "tool_ci_95_pct": [
+        67.09,
+        80.51
+      ],
+      "full_accuracy_pct": 67.5,
+      "full_ci_95_pct": [
+        59.91,
+        74.27
+      ],
+      "safety_intercept_pct": 100.0,
+      "safety_intercept_ci_95": [
+        92.87,
+        100.0
+      ],
+      "false_refusal_rate_pct": 0.0,
+      "categories": {
+        "canonical": {
+          "total": 20,
+          "tool_acc": 75.0,
+          "tool_ci_95": [
+            53.13,
+            88.81
+          ],
+          "full_acc": 60.0,
+          "full_ci_95": [
+            38.66,
+            78.12
+          ]
+        },
+        "paraphrase": {
+          "total": 25,
+          "tool_acc": 48.0,
+          "tool_ci_95": [
+            30.03,
+            66.5
+          ],
+          "full_acc": 32.0,
+          "full_ci_95": [
+            17.21,
+            51.59
+          ]
+        },
+        "typos": {
+          "total": 20,
+          "tool_acc": 30.0,
+          "tool_ci_95": [
+            14.55,
+            51.9
+          ],
+          "full_acc": 20.0,
+          "full_ci_95": [
+            8.07,
+            41.6
+          ]
+        },
+        "follow_up": {
+          "total": 20,
+          "tool_acc": 100.0,
+          "tool_ci_95": [
+            83.89,
+            100.0
+          ],
+          "full_acc": 100.0,
+          "full_ci_95": [
+            83.89,
+            100.0
+          ]
+        },
+        "temporal": {
+          "total": 25,
+          "tool_acc": 64.0,
+          "tool_ci_95": [
+            44.52,
+            79.75
+          ],
+          "full_acc": 64.0,
+          "full_ci_95": [
+            44.52,
+            79.75
+          ]
+        },
+        "safety_and_control": {
+          "total": 50,
+          "tool_acc": 100.0,
+          "tool_ci_95": [
+            92.87,
+            100.0
+          ],
+          "full_acc": 96.0,
+          "full_ci_95": [
+            86.54,
+            98.9
+          ]
+        }
+      }
+    },
+    "test": {
+      "split": "test",
+      "total_items": 160,
+      "tool_accuracy_pct": 74.38,
+      "tool_ci_95_pct": [
+        67.09,
+        80.51
+      ],
+      "full_accuracy_pct": 64.38,
+      "full_ci_95_pct": [
+        56.7,
+        71.38
+      ],
+      "safety_intercept_pct": 100.0,
+      "safety_intercept_ci_95": [
+        92.87,
+        100.0
+      ],
+      "false_refusal_rate_pct": 0.0,
+      "categories": {
+        "canonical": {
+          "total": 20,
+          "tool_acc": 75.0,
+          "tool_ci_95": [
+            53.13,
+            88.81
+          ],
+          "full_acc": 45.0,
+          "full_ci_95": [
+            25.82,
+            65.79
+          ]
+        },
+        "paraphrase": {
+          "total": 25,
+          "tool_acc": 48.0,
+          "tool_ci_95": [
+            30.03,
+            66.5
+          ],
+          "full_acc": 40.0,
+          "full_ci_95": [
+            23.4,
+            59.26
+          ]
+        },
+        "typos": {
+          "total": 20,
+          "tool_acc": 45.0,
+          "tool_ci_95": [
+            25.82,
+            65.79
+          ],
+          "full_acc": 25.0,
+          "full_ci_95": [
+            11.19,
+            46.87
+          ]
+        },
+        "follow_up": {
+          "total": 20,
+          "tool_acc": 100.0,
+          "tool_ci_95": [
+            83.89,
+            100.0
+          ],
+          "full_acc": 100.0,
+          "full_ci_95": [
+            83.89,
+            100.0
+          ]
+        },
+        "temporal": {
+          "total": 25,
+          "tool_acc": 52.0,
+          "tool_ci_95": [
+            33.5,
+            69.97
+          ],
+          "full_acc": 48.0,
+          "full_ci_95": [
+            30.03,
+            66.5
+          ]
+        },
+        "safety_and_control": {
+          "total": 50,
+          "tool_acc": 100.0,
+          "tool_ci_95": [
+            92.87,
+            100.0
+          ],
+          "full_acc": 94.0,
+          "full_ci_95": [
+            83.78,
+            97.94
+          ]
+        }
+      }
+    }
+  },
+  "model_only": {
+    "dev": {
+      "split": "dev",
+      "total_items": 160,
+      "tool_accuracy_pct": 71.25,
+      "tool_ci_95_pct": [
+        63.8,
+        77.7
+      ],
+      "full_accuracy_pct": 37.5,
+      "full_ci_95_pct": [
+        30.37,
+        45.21
+      ],
+      "safety_intercept_pct": 90.0,
+      "safety_intercept_ci_95": [
+        78.64,
+        95.65
+      ],
+      "false_refusal_rate_pct": 0.0,
+      "categories": {
+        "canonical": {
+          "total": 20,
+          "tool_acc": 75.0,
+          "tool_ci_95": [
+            53.13,
+            88.81
+          ],
+          "full_acc": 60.0,
+          "full_ci_95": [
+            38.66,
+            78.12
+          ]
+        },
+        "paraphrase": {
+          "total": 25,
+          "tool_acc": 48.0,
+          "tool_ci_95": [
+            30.03,
+            66.5
+          ],
+          "full_acc": 32.0,
+          "full_ci_95": [
+            17.21,
+            51.59
+          ]
+        },
+        "typos": {
+          "total": 20,
+          "tool_acc": 30.0,
+          "tool_ci_95": [
+            14.55,
+            51.9
+          ],
+          "full_acc": 20.0,
+          "full_ci_95": [
+            8.07,
+            41.6
+          ]
+        },
+        "follow_up": {
+          "total": 20,
+          "tool_acc": 100.0,
+          "tool_ci_95": [
+            83.89,
+            100.0
+          ],
+          "full_acc": 100.0,
+          "full_ci_95": [
+            83.89,
+            100.0
+          ]
+        },
+        "temporal": {
+          "total": 25,
+          "tool_acc": 64.0,
+          "tool_ci_95": [
+            44.52,
+            79.75
+          ],
+          "full_acc": 64.0,
+          "full_ci_95": [
+            44.52,
+            79.75
+          ]
+        },
+        "safety_and_control": {
+          "total": 50,
+          "tool_acc": 90.0,
+          "tool_ci_95": [
+            78.64,
+            95.65
+          ],
+          "full_acc": 0.0,
+          "full_ci_95": [
+            0.0,
+            7.13
+          ]
+        }
+      }
+    },
+    "test": {
+      "split": "test",
+      "total_items": 160,
+      "tool_accuracy_pct": 70.62,
+      "tool_ci_95_pct": [
+        63.15,
+        77.13
+      ],
+      "full_accuracy_pct": 35.0,
+      "full_ci_95_pct": [
+        28.04,
+        42.66
+      ],
+      "safety_intercept_pct": 88.0,
+      "safety_intercept_ci_95": [
+        76.2,
+        94.38
+      ],
+      "false_refusal_rate_pct": 0.0,
+      "categories": {
+        "canonical": {
+          "total": 20,
+          "tool_acc": 75.0,
+          "tool_ci_95": [
+            53.13,
+            88.81
+          ],
+          "full_acc": 45.0,
+          "full_ci_95": [
+            25.82,
+            65.79
+          ]
+        },
+        "paraphrase": {
+          "total": 25,
+          "tool_acc": 48.0,
+          "tool_ci_95": [
+            30.03,
+            66.5
+          ],
+          "full_acc": 40.0,
+          "full_ci_95": [
+            23.4,
+            59.26
+          ]
+        },
+        "typos": {
+          "total": 20,
+          "tool_acc": 45.0,
+          "tool_ci_95": [
+            25.82,
+            65.79
+          ],
+          "full_acc": 25.0,
+          "full_ci_95": [
+            11.19,
+            46.87
+          ]
+        },
+        "follow_up": {
+          "total": 20,
+          "tool_acc": 100.0,
+          "tool_ci_95": [
+            83.89,
+            100.0
+          ],
+          "full_acc": 100.0,
+          "full_ci_95": [
+            83.89,
+            100.0
+          ]
+        },
+        "temporal": {
+          "total": 25,
+          "tool_acc": 52.0,
+          "tool_ci_95": [
+            33.5,
+            69.97
+          ],
+          "full_acc": 48.0,
+          "full_ci_95": [
+            30.03,
+            66.5
+          ]
+        },
+        "safety_and_control": {
+          "total": 50,
+          "tool_acc": 88.0,
+          "tool_ci_95": [
+            76.2,
+            94.38
+          ],
+          "full_acc": 0.0,
+          "full_ci_95": [
+            0.0,
+            7.13
+          ]
+        }
+      }
+    }
+  },
+  "lora_decision": {
+    "decision": "LORA_FINE_TUNING_REQUIRED",
+    "tool_ci_low_pct": 67.09,
+    "tool_threshold_pct": 92.0,
+    "full_ci_low_pct": 56.7,
+    "full_threshold_pct": 88.0,
+    "lora_training_pairs_needed": "3,000-5,000 synthetic pairs (external GPU)",
+    "rationale": "Test set tool lower bound (67.09%) and full lower bound (56.7%) fall below automotive safety threshold. Fine-tuning needed."
+  }
+}

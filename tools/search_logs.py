@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from store.ro_db import get_readonly_connection
+from slm.sanitizer import sanitize_log_message
 from tools.base import make_evidence_packet
 from tools.registry import register_tool
 from tools.time_parser import parse_iso_to_epoch_ms
@@ -74,8 +75,11 @@ def handle_search_logs(args: dict[str, Any], db_path: Path | str) -> dict[str, A
         evidence_refs.append(f"log:{lid}")
         timestamps.append(r["ts"])
 
-    # Create safe quoted representation of top matching messages
-    quoted_samples = " | ".join(f"[{r['source']}] {r['message']}" for r in rows[:3])
+    # Create safe quoted representation of top matching messages (escaped and length capped)
+    quoted_samples = " | ".join(
+        f"[{r['source']}] {sanitize_log_message(r['message'], max_chars=120, wrap_snippet=False)}"
+        for r in rows[:3]
+    )
     findings.append({
         "id": "f1",
         "claim": f"Found {len(rows)} log entries matching '{query_str}'. Matches: {quoted_samples}",

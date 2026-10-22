@@ -44,6 +44,11 @@ def _init_catalog() -> None:
                         _ALIAS_MAP[alias.lower()] = sig
                 except Exception:
                     pass
+    # Additional common compound aliases
+    _ALIAS_MAP["battery_state_of_charge"] = "soc"
+    _ALIAS_MAP["battery state of charge"] = "soc"
+    _ALIAS_MAP["battery soc"] = "soc"
+    _ALIAS_MAP["range"] = "range_per_charge"
 
 
 def _init_tools_schema() -> None:
