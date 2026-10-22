@@ -9,7 +9,7 @@ import numpy as np
 def detect_signal_deviation_onset(
     timestamps: list[int],
     values: list[float],
-    baseline_fraction: float = 0.20,
+    baseline_fraction: float = 0.05,
     min_deviation: float = 0.5,
 ) -> dict[str, Any] | None:
     """Compute baseline mu, sigma and identify the exact timestamp where deviation begins.

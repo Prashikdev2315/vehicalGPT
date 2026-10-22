@@ -28,26 +28,24 @@ def candump_data(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, 
     write_candump(db_path, candump_path, start, 10 * 60 * 1000,
                   Path("docs/signals.dbc"))
 
-    return db_path, candump_path, Path("docs/signals.dbc")
+    return db_path, candump_path, Path("docs/signals.dbc"), start, 10 * 60 * 1000
 
 
 @pytest.mark.slow
 @pytest.mark.integration
 class TestCandumpRoundtrip:
-    def test_candump_file_created(self, candump_data: tuple[Path, Path, Path]) -> None:
-        _, candump_path, _ = candump_data
+    def test_candump_file_created(self, candump_data: tuple[Path, Path, Path, int, int]) -> None:
+        _, candump_path, _, _, _ = candump_data
         assert candump_path.exists()
         assert candump_path.stat().st_size > 0
 
-    def test_replay_values_exact_match(self, candump_data: tuple[Path, Path, Path]) -> None:
+    def test_replay_values_exact_match(self, candump_data: tuple[Path, Path, Path, int, int]) -> None:
         """Replay candump and compare with DB values — must be EXACT (D7)."""
-        db_path, candump_path, dbc_path = candump_data
+        db_path, candump_path, dbc_path, start, dur = candump_data
 
         # Get original DB values for the window
         conn = sqlite3.connect(str(db_path))
-        base_epoch = int(SimConfig(days=2).get_base_datetime(2).timestamp() * 1000)
-        start = base_epoch + int(1 * 24 * 3600 * 1000) + int(8 * 3600 * 1000)
-        end = start + 10 * 60 * 1000
+        end = start + dur
 
         db_values: dict[tuple[int, str], float] = {}
         for row in conn.execute(

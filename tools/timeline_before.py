@@ -31,7 +31,8 @@ def handle_timeline_before(args: dict[str, Any], db_path: str = "data/vehicle.db
             latency_ms=int((time.perf_counter() - t0) * 1000),
         )
 
-    with get_readonly_connection(db_path) as conn:
+    conn = get_readonly_connection(db_path)
+    try:
         cur = conn.cursor()
 
         # Find target event
@@ -79,62 +80,75 @@ def handle_timeline_before(args: dict[str, Any], db_path: str = "data/vehicle.db
         start_iso = datetime.datetime.fromtimestamp(t_lookback_start / 1000.0, tz=datetime.timezone.utc).isoformat()
         end_iso = datetime.datetime.fromtimestamp(t_event / 1000.0, tz=datetime.timezone.utc).isoformat()
 
-        # Discover candidate signals from event_snapshots or signals_1s
-        cur.execute(
-            "SELECT DISTINCT signal FROM event_snapshots WHERE event_id = ?",
-            (eid,),
-        )
-        snap_signals = [r[0] for r in cur.fetchall()]
+        # Prioritize relevant candidate signals based on event payload and domain
+        EVENT_DOMAIN_SIGNALS: dict[str, list[str]] = {
+            "battery_overtemp_warning": ["coolant_pump_duty", "pack_temp", "coolant_temp", "ambient_temp", "motor_power", "pack_current", "pack_voltage"],
+            "adas_disengagement": ["steering_angle", "vehicle_speed", "brake_pressure", "throttle_position", "accel_lat", "accel_long", "disengagement_reason"],
+            "hard_braking": ["brake_pressure", "accel_long", "vehicle_speed", "throttle_position"],
+            "hard_acceleration": ["throttle_position", "motor_power", "accel_long", "vehicle_speed"],
+            "charging_session": ["charge_power", "charge_current", "charge_voltage", "soc", "pack_temp"],
+        }
 
-        cur.execute(
-            "SELECT DISTINCT signal FROM signals_1s WHERE ts >= ? AND ts <= ?",
-            (t_lookback_start, t_snap_start),
-        )
-        s1s_signals = [r[0] for r in cur.fetchall()]
+        # Collect candidate signals
+        domain_sigs = set(EVENT_DOMAIN_SIGNALS.get(ev_type, []))
+        payload_sigs = set(payload.keys()) if isinstance(payload, dict) else set()
+        priority_sigs = list(domain_sigs | payload_sigs)
 
-        candidate_signals = sorted(list(set(snap_signals + s1s_signals)))
+        if not priority_sigs:
+            cur.execute("SELECT DISTINCT signal FROM event_snapshots WHERE event_id = ?", (eid,))
+            priority_sigs = [r[0] for r in cur.fetchall()]
+
+        candidate_signals = sorted(priority_sigs)
         if not candidate_signals:
             cur.execute(
-                "SELECT DISTINCT signal FROM signals_1m WHERE ts >= ? AND ts <= ?",
-                (t_lookback_start, t_event),
+                "SELECT DISTINCT signal FROM signals_1s WHERE ts >= ? AND ts <= ?",
+                (t_lookback_start, t_snap_start),
             )
-            candidate_signals = [r[0] for r in cur.fetchall()]
+            candidate_signals = sorted([r[0] for r in cur.fetchall()])[:10]
 
         precursors: list[dict[str, Any]] = []
         evidence_refs: list[str] = [f"event:{eid}"]
-        if snap_signals:
+
+        # Batch fetch tier 1: signals_1s (or signals_1m fallback)
+        q_marks = ",".join(["?"] * len(candidate_signals))
+        cur.execute(
+            f"SELECT signal, ts, avg FROM signals_1s WHERE signal IN ({q_marks}) AND ts >= ? AND ts < ? ORDER BY signal, ts ASC",
+            (*candidate_signals, t_lookback_start, t_snap_start),
+        )
+        tier1_rows = cur.fetchall()
+        if not tier1_rows:
+            cur.execute(
+                f"SELECT signal, ts, avg FROM signals_1m WHERE signal IN ({q_marks}) AND ts >= ? AND ts < ? ORDER BY signal, ts ASC",
+                (*candidate_signals, t_lookback_start, t_snap_start),
+            )
+            tier1_rows = cur.fetchall()
+
+        # Batch fetch tier 2: event_snapshots (or signals_1s fallback)
+        cur.execute(
+            f"SELECT signal, ts, value FROM event_snapshots WHERE event_id = ? AND signal IN ({q_marks}) AND ts >= ? AND ts <= ? ORDER BY signal, ts ASC",
+            (eid, *candidate_signals, t_snap_start, t_event),
+        )
+        tier2_rows = cur.fetchall()
+        if not tier2_rows:
+            cur.execute(
+                f"SELECT signal, ts, avg FROM signals_1s WHERE signal IN ({q_marks}) AND ts >= ? AND ts <= ? ORDER BY signal, ts ASC",
+                (*candidate_signals, t_snap_start, t_event),
+            )
+            tier2_rows = cur.fetchall()
+
+        if tier2_rows:
             evidence_refs.append(f"event_snapshots:{eid}")
-        if s1s_signals:
+        if tier1_rows:
             evidence_refs.append("signals_1s")
 
-        for sig in candidate_signals:
-            # Multi-tier fetch: [t_lookback_start, t_snap_start) from signals_1s (or 1m)
-            cur.execute(
-                "SELECT ts, avg FROM signals_1s WHERE signal = ? AND ts >= ? AND ts < ? ORDER BY ts ASC",
-                (sig, t_lookback_start, t_snap_start),
-            )
-            r1 = cur.fetchall()
-            if not r1:
-                cur.execute(
-                    "SELECT ts, avg FROM signals_1m WHERE signal = ? AND ts >= ? AND ts < ? ORDER BY ts ASC",
-                    (sig, t_lookback_start, t_snap_start),
-                )
-                r1 = cur.fetchall()
+        # Group data points by signal
+        signal_data: dict[str, list[tuple[int, float]]] = {sig: [] for sig in candidate_signals}
+        for sig, ts, val in tier1_rows:
+            signal_data.setdefault(sig, []).append((ts, val))
+        for sig, ts, val in tier2_rows:
+            signal_data.setdefault(sig, []).append((ts, val))
 
-            # [t_snap_start, t_event] from event_snapshots (or signals_1s)
-            cur.execute(
-                "SELECT ts, value FROM event_snapshots WHERE event_id = ? AND signal = ? AND ts >= ? AND ts <= ? ORDER BY ts ASC",
-                (eid, sig, t_snap_start, t_event),
-            )
-            r2 = cur.fetchall()
-            if not r2:
-                cur.execute(
-                    "SELECT ts, avg FROM signals_1s WHERE signal = ? AND ts >= ? AND ts <= ? ORDER BY ts ASC",
-                    (sig, t_snap_start, t_event),
-                )
-                r2 = cur.fetchall()
-
-            pts = r1 + r2
+        for sig, pts in signal_data.items():
             if len(pts) < 10:
                 continue
 
@@ -210,3 +224,5 @@ def handle_timeline_before(args: dict[str, Any], db_path: str = "data/vehicle.db
             display=display,
             latency_ms=latency_ms,
         )
+    finally:
+        conn.close()

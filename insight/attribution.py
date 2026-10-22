@@ -159,6 +159,7 @@ def decompose_metric_change(
         if ota_row:
             ota_event_id, t_ota, _ = ota_row
             # Measure propulsion step discontinuity across OTA event (+/- 3 days window)
+            # Match commute trips (speed < 50 km/h or highway_share < 0.3) to isolate firmware regression from route variance
             window_ms = 3 * 86400 * 1000
             cur.execute(
                 """
@@ -168,6 +169,7 @@ def decompose_metric_change(
                     COALESCE(SUM(hvac_energy_kwh), 0.0)
                 FROM trips
                 WHERE ts_end <= ? AND ts_start >= ?
+                  AND (highway_share < 0.3 OR avg_speed_kph < 50.0)
                 """,
                 (t_ota, t_ota - window_ms),
             )
@@ -181,12 +183,26 @@ def decompose_metric_change(
                     COALESCE(SUM(hvac_energy_kwh), 0.0)
                 FROM trips
                 WHERE ts_start >= ? AND ts_end <= ?
+                  AND (highway_share < 0.3 OR avg_speed_kph < 50.0)
                 """,
                 (t_ota, t_ota + window_ms),
             )
             ta = cur.fetchone()
 
-            if tb[0] > 0 and ta[0] > 0:
+            # Fallback to all trips if matched set is empty
+            if not tb or tb[0] <= 0 or not ta or ta[0] <= 0:
+                cur.execute(
+                    "SELECT COALESCE(SUM(distance_km), 0.0), COALESCE(SUM(energy_kwh), 0.0), COALESCE(SUM(hvac_energy_kwh), 0.0) FROM trips WHERE ts_end <= ? AND ts_start >= ?",
+                    (t_ota, t_ota - window_ms),
+                )
+                tb = cur.fetchone()
+                cur.execute(
+                    "SELECT COALESCE(SUM(distance_km), 0.0), COALESCE(SUM(energy_kwh), 0.0), COALESCE(SUM(hvac_energy_kwh), 0.0) FROM trips WHERE ts_start >= ? AND ts_end <= ?",
+                    (t_ota, t_ota + window_ms),
+                )
+                ta = cur.fetchone()
+
+            if tb and ta and tb[0] > 0 and ta[0] > 0:
                 p_before = (tb[1] - tb[2]) * 1000.0 / tb[0]
                 p_after = (ta[1] - ta[2]) * 1000.0 / ta[0]
                 # Proportion of baseline propulsion attributed to OTA step

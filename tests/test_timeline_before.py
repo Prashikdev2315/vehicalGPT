@@ -84,3 +84,55 @@ def test_timeline_before_missing_event():
     assert len(result["events"]) == 0
     assert len(result["findings"]) == 0
     assert len(result["data_gaps"]) > 0
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_timeline_precursors_multi_seed(tmp_path):
+    """Verify coolant_pump_duty onset precedes pack_temp onset across 5 different seeds."""
+    from sim.config import SimConfig
+    from sim.generator import generate_history
+
+    seeds = [42, 101, 202, 303, 404]
+    results = []
+
+    for seed in seeds:
+        db_file = tmp_path / f"test_s3_seed_{seed}.db"
+        gt_file = tmp_path / f"gt_seed_{seed}.json"
+        cfg = SimConfig(seed=seed, days=1, s3_event_day=0, out_db=db_file, ground_truth_path=gt_file)
+        generate_history(days=1, seed=seed, out_db=db_file, cfg=cfg)
+
+        res = dispatch_tool(
+            "timeline_before",
+            {"event_type": "battery_overtemp_warning", "occurrence": "latest", "seconds_before": 600},
+            db_path=db_file,
+        )
+        validate_evidence_packet(res)
+
+        findings = res["findings"]
+        pump_f = next((f for f in findings if "coolant_pump_duty" in f["claim"]), None)
+        temp_f = next((f for f in findings if "pack_temp" in f["claim"]), None)
+
+        assert pump_f is not None, f"Seed {seed}: coolant_pump_duty onset not detected"
+        assert temp_f is not None, f"Seed {seed}: pack_temp onset not detected"
+
+        pump_ts = pump_f["timestamps"][0]
+        temp_ts = temp_f["timestamps"][0]
+        ev_ts = res["events"][0]["ts_start"]
+
+        assert pump_ts < temp_ts, f"Seed {seed}: Pump onset {pump_ts} must precede temp onset {temp_ts}"
+        assert pump_ts < ev_ts
+        assert temp_ts <= ev_ts
+
+        results.append({
+            "seed": seed,
+            "pump_sec_before": (ev_ts - pump_ts) / 1000.0,
+            "temp_sec_before": (ev_ts - temp_ts) / 1000.0,
+            "lead_time_sec": (temp_ts - pump_ts) / 1000.0,
+        })
+
+    # Ensure all 5 seeds passed with pump leading pack_temp
+    assert len(results) == 5
+    for r in results:
+        assert r["lead_time_sec"] > 0
+

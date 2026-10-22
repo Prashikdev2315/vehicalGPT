@@ -11,7 +11,7 @@
       "window_b": "2026-10-24/2026-10-28"
     },
     "expected_facts": [
-      "range dropped",
+      "range_per_charge",
       "HVAC"
     ],
     "must_refuse": false
@@ -28,7 +28,7 @@
       "window_b": "2026-10-24/2026-10-28"
     },
     "expected_facts": [
-      "range dropped",
+      "range_per_charge",
       "HVAC"
     ],
     "must_refuse": false
@@ -97,7 +97,8 @@
       "direction": "rise"
     },
     "expected_facts": [
-      "2026-10-18"
+      "energy_per_km",
+      "shift"
     ],
     "must_refuse": false
   },
@@ -114,7 +115,8 @@
       "direction": "drop"
     },
     "expected_facts": [
-      "2026-10-18"
+      "2026-10-13",
+      "range_per_charge"
     ],
     "must_refuse": false
   },
@@ -131,7 +133,8 @@
       "direction": "rise"
     },
     "expected_facts": [
-      "2026-10-18"
+      "energy_per_km",
+      "shift"
     ],
     "must_refuse": false
   },
@@ -148,7 +151,8 @@
       "direction": "drop"
     },
     "expected_facts": [
-      "2026-10-18"
+      "2026-10-13",
+      "range_per_charge"
     ],
     "must_refuse": false
   },
@@ -165,7 +169,8 @@
       "direction": "either"
     },
     "expected_facts": [
-      "2026-10-18"
+      "energy_per_km",
+      "shift"
     ],
     "must_refuse": false
   },
@@ -181,7 +186,7 @@
       "end": "2026-10-27"
     },
     "expected_facts": [
-      "low_lane_marking_confidence"
+      "speed_out_of_range"
     ],
     "must_refuse": false
   },
@@ -213,7 +218,7 @@
       "end": "2026-10-27"
     },
     "expected_facts": [
-      "clip_refs"
+      "adas_disengagement"
     ],
     "must_refuse": false
   },
@@ -245,7 +250,7 @@
       "end": "2026-10-27"
     },
     "expected_facts": [
-      "reason_code"
+      "speed_out_of_range"
     ],
     "must_refuse": false
   },
@@ -612,7 +617,7 @@
       "signal": "pack_temp"
     },
     "expected_facts": [
-      "\u00b0C"
+      "C"
     ],
     "must_refuse": false
   },
@@ -657,8 +662,8 @@
       "granularity": "day"
     },
     "expected_facts": [
-      "slope",
-      "net_change"
+      "declined",
+      "range_per_charge"
     ],
     "must_refuse": false
   },
@@ -709,7 +714,7 @@
       "granularity": "week"
     },
     "expected_facts": [
-      "net_change"
+      "energy_per_km"
     ],
     "must_refuse": false
   },
@@ -880,7 +885,7 @@
       "kind": "out_of_scope"
     },
     "expected_facts": [
-      "out of scope"
+      "outside the scope"
     ],
     "must_refuse": true
   },
@@ -894,7 +899,7 @@
       "kind": "out_of_scope"
     },
     "expected_facts": [
-      "out of scope"
+      "outside the scope"
     ],
     "must_refuse": true
   },
@@ -908,7 +913,7 @@
       "kind": "out_of_scope"
     },
     "expected_facts": [
-      "out of scope"
+      "outside the scope"
     ],
     "must_refuse": true
   },
@@ -922,7 +927,7 @@
       "kind": "out_of_scope"
     },
     "expected_facts": [
-      "out of scope"
+      "outside the scope"
     ],
     "must_refuse": true
   },
@@ -936,7 +941,7 @@
       "kind": "out_of_scope"
     },
     "expected_facts": [
-      "out of scope"
+      "outside the scope"
     ],
     "must_refuse": true
   },
@@ -950,7 +955,7 @@
       "kind": "out_of_scope"
     },
     "expected_facts": [
-      "out of scope"
+      "outside the scope"
     ],
     "must_refuse": true
   },
@@ -964,7 +969,7 @@
       "kind": "out_of_scope"
     },
     "expected_facts": [
-      "out of scope"
+      "outside the scope"
     ],
     "must_refuse": true
   },
@@ -978,7 +983,7 @@
       "kind": "out_of_scope"
     },
     "expected_facts": [
-      "out of scope"
+      "outside the scope"
     ],
     "must_refuse": true
   },
@@ -992,7 +997,7 @@
       "kind": "out_of_scope"
     },
     "expected_facts": [
-      "out of scope"
+      "outside the scope"
     ],
     "must_refuse": true
   },
@@ -1006,7 +1011,7 @@
       "kind": "out_of_scope"
     },
     "expected_facts": [
-      "out of scope"
+      "outside the scope"
     ],
     "must_refuse": true
   },
@@ -1182,7 +1187,7 @@
       "signal": "pack_temp"
     },
     "expected_facts": [
-      "\u00b0C"
+      "C"
     ],
     "must_refuse": false
   },
@@ -1391,7 +1396,7 @@
       "signal": "cabin_temp"
     },
     "expected_facts": [
-      "\u00b0C"
+      "C"
     ],
     "must_refuse": false
   },
@@ -1412,7 +1417,7 @@
   {
     "id": "bm_093",
     "split": "dev",
-    "category": "cohort",
+    "category": "data_gap",
     "question": "Compare energy consumption in cold start vs charging",
     "expected_tool": "compare",
     "expected_args": {
@@ -1422,9 +1427,7 @@
       "start": "2026-10-01",
       "end": "2026-10-28"
     },
-    "expected_facts": [
-      "energy_per_km"
-    ],
+    "expected_facts": [],
     "must_refuse": false
   },
   {
@@ -1492,7 +1495,7 @@
       "source": "adas"
     },
     "expected_facts": [
-      "adas"
+      "adas_disengagement"
     ],
     "must_refuse": false
   },

@@ -74,19 +74,25 @@ def get_signal_unit(signal_name: str) -> str:
     return ""
 
 
+_TOOLS_VALIDATOR: Any = None
+
+
 def get_tools_schema() -> dict[str, Any]:
     """Return the parsed tools schema from docs/tools.schema.json."""
+    global _TOOLS_SCHEMA, _TOOLS_VALIDATOR
     _init_tools_schema()
     if _TOOLS_SCHEMA is None:
         raise FileNotFoundError(f"Schema not found: {TOOLS_SCHEMA_PATH}")
+    if _TOOLS_VALIDATOR is None:
+        _TOOLS_VALIDATOR = jsonschema.Draft202012Validator(_TOOLS_SCHEMA)
     return _TOOLS_SCHEMA
 
 
 def validate_tool_call(tool_name: str, args: dict[str, Any]) -> None:
     """Validate a tool call against the oneOf schema in docs/tools.schema.json."""
-    schema = get_tools_schema()
+    get_tools_schema()
     instance = {"tool": tool_name, "args": args}
-    jsonschema.validate(instance=instance, schema=schema)
+    _TOOLS_VALIDATOR.validate(instance)
 
 
 def register_tool(name: str) -> Callable[[Callable[..., dict[str, Any]]], Callable[..., dict[str, Any]]]:

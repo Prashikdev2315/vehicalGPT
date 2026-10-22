@@ -13,18 +13,22 @@ SCHEMA_PATH = Path("docs/evidence_packet.schema.json")
 _EVIDENCE_SCHEMA: dict[str, Any] | None = None
 
 
+_EVIDENCE_VALIDATOR: Any = None
+
+
 def get_evidence_schema() -> dict[str, Any]:
-    global _EVIDENCE_SCHEMA
+    global _EVIDENCE_SCHEMA, _EVIDENCE_VALIDATOR
     if _EVIDENCE_SCHEMA is None:
         with open(SCHEMA_PATH, encoding="utf-8") as f:
             _EVIDENCE_SCHEMA = json.load(f)
+        _EVIDENCE_VALIDATOR = jsonschema.Draft202012Validator(_EVIDENCE_SCHEMA)
     return _EVIDENCE_SCHEMA
 
 
 def validate_evidence_packet(packet: dict[str, Any]) -> None:
     """Validate an evidence packet against docs/evidence_packet.schema.json."""
-    schema = get_evidence_schema()
-    jsonschema.validate(instance=packet, schema=schema)
+    get_evidence_schema()
+    _EVIDENCE_VALIDATOR.validate(packet)
 
 
 def make_evidence_packet(
