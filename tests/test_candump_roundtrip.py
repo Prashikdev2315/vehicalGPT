@@ -21,8 +21,7 @@ def candump_data(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, 
     generate_history(days=2, seed=42, out_db=db_path, cfg=cfg)
 
     # Write candump for a 10-minute window
-    from datetime import datetime, timezone
-    base_epoch = int(datetime(2026, 10, 1, tzinfo=timezone.utc).timestamp() * 1000)
+    base_epoch = int(cfg.get_base_datetime(2).timestamp() * 1000)
     # Day 1, 8:00 AM, 10 minutes
     start = base_epoch + int(1 * 24 * 3600 * 1000) + int(8 * 3600 * 1000)
     candump_path = tmp / "test.log"
@@ -44,8 +43,7 @@ class TestCandumpRoundtrip:
 
         # Get original DB values for the window
         conn = sqlite3.connect(str(db_path))
-        from datetime import datetime, timezone
-        base_epoch = int(datetime(2026, 10, 1, tzinfo=timezone.utc).timestamp() * 1000)
+        base_epoch = int(SimConfig(days=2).get_base_datetime(2).timestamp() * 1000)
         start = base_epoch + int(1 * 24 * 3600 * 1000) + int(8 * 3600 * 1000)
         end = start + 10 * 60 * 1000
 

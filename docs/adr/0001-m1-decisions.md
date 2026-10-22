@@ -88,3 +88,21 @@ $$\text{heat\_gen\_kw} += 4.5 \times \left(1.0 - \frac{\text{coolant\_pump\_duty
 
 **Rationale:** In a liquid-cooled battery pack, coolant circulation is necessary to transport heat from cell cores to the radiator. When the coolant pump stalls or degrades, coolant flow ceases, eliminating convective heat transfer and causing localized cell thermal hot-spots. Without this term, driving at moderate commute speeds (10–15 A draw) produced insufficient Joule heating ($I^2R \approx 0.3\,\text{kW}$) to elevate the 50 kJ/K pack thermal mass from 32°C to the 45°C overtemperature threshold within the 10-minute degradation window. The stagnation term accurately reproduces the rapid cell core temperature rise seen in real EV coolant pump failures while ensuring `coolant_pump_duty` drops before `pack_temp` rises.
 
+## D13. Docker container network multicast and alternative transports
+
+**Decision:**
+1. **Container Networking for Multicast:** Standard Docker bridge networks (`bridge`) filter or isolate UDP multicast packets across containers and virtual interfaces due to IGMP snooping and default bridge iptables rules. For multi-process CAN streaming over `udp_multicast` inside Docker, containers must run with `network_mode: host` (`--net=host`) so processes share the network namespace and multicast routing on loopback.
+2. **Alternative Transports:** If host networking cannot be used (e.g. in orchestrators requiring network namespace isolation), alternative transports are:
+   - **Linux SocketCAN (`vcan0`):** Pass `/dev/net/tun` or host SocketCAN interface into the container.
+   - **UNIX Domain Sockets / IPC:** Fast, lightweight point-to-point or broadcast transport for local inter-process communication.
+   - **`socketcand` (TCP):** Bridges CAN frames over standard TCP connections across container network bridges without multicast dependencies.
+3. **Multi-Arch (`linux/arm64`):** Cross-building container images for ARM64 requires Docker Buildx with QEMU binfmt emulation (`tonistiigi/binfmt`). On hosts where the Docker daemon is not active, builds must be run via Docker Desktop or CI.
+
+## D14. Vehicle clock and timezone anchoring
+
+**Decision:**
+1. `SimConfig` maintains a vehicle timezone (default `Asia/Kolkata`) and an anchor `reference_now` datetime.
+2. The generated history starts at `start_date = (reference_now.date() - (days - 1))` at `00:00:00` and ends strictly at `reference_now`.
+3. No simulation data, events, or trips are permitted to extend into the future relative to `reference_now` (`ts <= ref_now_ms`).
+4. Daily digests (`digest_daily.day`) and relative date calculations ("yesterday", "today") are formatted in the vehicle timezone.
+

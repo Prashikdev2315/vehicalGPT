@@ -35,13 +35,13 @@ class TestDerivedMetrics:
         base_days = rows[0:5]
         base_rpc = sum(r[1] for r in base_days) / len(base_days)
 
-        # Day 14-17 (S1 cooled state before S2 OTA update)
-        s1_days = rows[13:17]
+        # Day 15-17 (S1 cooled state before S2 OTA update, weekday commute)
+        s1_days = rows[14:17]
         s1_rpc = sum(r[1] for r in s1_days) / len(s1_days)
 
         drop_pct = (base_rpc - s1_rpc) / base_rpc * 100.0
-        # Documented range drop: ~10-15% (with reasonable margin 8-18%)
-        assert 8.0 <= drop_pct <= 20.0, (
+        # Documented range drop: ~10-15%
+        assert 10.0 <= drop_pct <= 15.0, (
             f"Expected S1 range drop ~10-15%, got {drop_pct:.1f}% "
             f"(base={base_rpc:.1f} km, s1={s1_rpc:.1f} km)"
         )

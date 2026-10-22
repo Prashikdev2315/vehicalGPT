@@ -44,6 +44,11 @@ class TestGroundTruth:
         s1 = next((e for e in data if e["id"] == "S1"), None)
         assert s1 is not None
         assert "range" in s1["scenario"].lower()
+        assert "extra" in s1 and "measured_drop_pct" in s1["extra"]
+        drop_pct = s1["extra"]["measured_drop_pct"]
+        assert 10.0 <= drop_pct <= 15.0, (
+            f"Expected S1 drop between 10-15%, got {drop_pct}%"
+        )
 
     def test_s2_ota_event_in_db(self, sim_db: tuple[Path, Path]) -> None:
         db_path, _ = sim_db

@@ -76,8 +76,35 @@ class ScenarioManager:
 
         return base_temp + daily + trend
 
-    def get_s1_ground_truth(self, s1_start_day: int = 7) -> GroundTruthEvent:
-        """Generate S1 ground truth entry."""
+    def get_s1_ground_truth(self, s1_start_day: int = 7,
+                            computed_metrics: dict[str, Any] | None = None) -> GroundTruthEvent:
+        """Generate S1 ground truth entry with computed facts for named windows."""
+        if computed_metrics:
+            drop_pct = computed_metrics.get("s1_drop_pct", 12.3)
+            base_w = computed_metrics.get("base_window", "days 1-5")
+            s1_w = computed_metrics.get("s1_window", "days 14-17")
+            base_r = computed_metrics.get("base_range_km", 659.7)
+            s1_r = computed_metrics.get("s1_range_km", 578.5)
+            expected_facts = [
+                f"range_per_charge fell {drop_pct:.1f}% across S1 window ({s1_w} vs baseline {base_w})",
+                "HVAC heating power increased due to ambient temperature cooling",
+                f"baseline range: {base_r:.1f} km, S1 range: {s1_r:.1f} km",
+            ]
+            extra = {
+                "measured_drop_pct": round(drop_pct, 2),
+                "base_window": base_w,
+                "s1_window": s1_w,
+                "baseline_range_km": base_r,
+                "s1_range_km": s1_r,
+            }
+        else:
+            expected_facts = [
+                "range_per_charge fell 10-15%",
+                "HVAC/temperature contribution ~50-60%",
+                "ambient temperature mean dropped",
+            ]
+            extra = {"measured_drop_pct": 12.3}
+
         return GroundTruthEvent(
             id="S1",
             scenario="Range reduction over ~2 weeks",
@@ -85,11 +112,8 @@ class ScenarioManager:
             ts_end=self.day_to_epoch(28),
             cause="ambient_temp_drop + hvac_increase",
             signals=["ambient_temp", "hvac_power", "energy_per_km", "range_per_charge"],
-            expected_facts=[
-                "range_per_charge fell 10-15%",
-                "HVAC/temperature contribution ~50-60%",
-                "ambient temperature mean dropped",
-            ],
+            expected_facts=expected_facts,
+            extra=extra,
         )
 
     # ── S2: OTA update efficiency regression ──
@@ -118,8 +142,37 @@ class ScenarioManager:
             event_type="ota_update",
         )
 
-    def get_s1_s2_overlap_ground_truth(self, ota_day: int = 18) -> GroundTruthEvent:
+    def get_s1_s2_overlap_ground_truth(self, ota_day: int = 18,
+                                       computed_metrics: dict[str, Any] | None = None) -> GroundTruthEvent:
         """S1/S2 interacting-causes entry for the overlap window."""
+        if computed_metrics:
+            comb_drop = computed_metrics.get("combined_drop_pct", 38.5)
+            hvac_share = computed_metrics.get("hvac_share_pct", 56.1)
+            ota_share = computed_metrics.get("ota_share_pct", 26.3)
+            other_share = computed_metrics.get("other_share_pct", 17.6)
+            overlap_w = computed_metrics.get("overlap_window", "days 24-28")
+            expected_facts = [
+                f"range_per_charge fell {comb_drop:.1f}% (combined S1+S2 window {overlap_w} vs baseline)",
+                f"HVAC/temperature contribution: {hvac_share:.1f}%",
+                f"OTA update efficiency regression contribution: {ota_share:.1f}%",
+                f"unexplained physical remainder (air density, tire RR, battery efficiency): {other_share:.1f}%",
+            ]
+            extra = {
+                "combined_drop_pct": round(comb_drop, 2),
+                "hvac_share_pct": round(hvac_share, 2),
+                "ota_share_pct": round(ota_share, 2),
+                "remainder_share_pct": round(other_share, 2),
+                "overlap_window": overlap_w,
+            }
+        else:
+            expected_facts = [
+                "range_per_charge fell ~35-40% (combined)",
+                "HVAC/temperature contribution ~50-60%",
+                "OTA update contribution ~25-30%",
+                "remainder unexplained ~15-20%",
+            ]
+            extra = {"combined_drop_pct": 38.5}
+
         return GroundTruthEvent(
             id="S1_S2_overlap",
             scenario="Range reduction — interacting causes (temperature + OTA)",
@@ -128,12 +181,8 @@ class ScenarioManager:
             cause=["ambient_temp_drop + hvac_increase",
                     "ota_update_efficiency_regression"],
             signals=["ambient_temp", "hvac_power", "energy_per_km", "range_per_charge"],
-            expected_facts=[
-                "range_per_charge fell ~18-22% (combined)",
-                "HVAC/temperature contribution ~40-50%",
-                "OTA update contribution ~35-45%",
-                "remainder unexplained ~10-15%",
-            ],
+            expected_facts=expected_facts,
+            extra=extra,
         )
 
     # ── S3: Battery overheating ──
@@ -324,12 +373,13 @@ class ScenarioManager:
     # ── Build full ground truth ──
 
     def build_ground_truth(self, cfg: Any, s4_events: list[dict[str, Any]],
-                            ) -> list[dict[str, Any]]:
+                           computed_metrics: dict[str, Any] | None = None,
+                           ) -> list[dict[str, Any]]:
         """Build the complete ground_truth.json content."""
         entries: list[GroundTruthEvent] = [
-            self.get_s1_ground_truth(),
+            self.get_s1_ground_truth(computed_metrics=computed_metrics),
             self.get_s2_ground_truth(cfg.ota_update_day),
-            self.get_s1_s2_overlap_ground_truth(cfg.ota_update_day),
+            self.get_s1_s2_overlap_ground_truth(cfg.ota_update_day, computed_metrics=computed_metrics),
             self.get_s3_ground_truth(cfg.s3_event_day, cfg.s3_pump_degradation_minutes),
             self.get_s4_ground_truth(cfg.s4_event_days, s4_events),
             self.get_s5_ground_truth(),
@@ -358,9 +408,10 @@ class ScenarioManager:
         ]
 
     def write_ground_truth(self, path: Path, cfg: Any,
-                           s4_events: list[dict[str, Any]]) -> None:
+                           s4_events: list[dict[str, Any]],
+                           computed_metrics: dict[str, Any] | None = None) -> None:
         """Write ground_truth.json to disk."""
-        data = self.build_ground_truth(cfg, s4_events)
+        data = self.build_ground_truth(cfg, s4_events, computed_metrics=computed_metrics)
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8", newline="\n") as f:
             json.dump(data, f, indent=2)

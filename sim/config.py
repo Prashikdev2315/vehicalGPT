@@ -1,8 +1,19 @@
-"""Simulator configuration: seeds, defaults, bus config."""
-from __future__ import annotations
-
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
+from zoneinfo import ZoneInfo
+
+
+def _get_tz(tz_name: str) -> Any:
+    """Return timezone object with graceful fallback if system tz database is missing."""
+    try:
+        return ZoneInfo(tz_name)
+    except Exception:
+        from datetime import timezone as dt_timezone
+        if tz_name == "Asia/Kolkata":
+            return dt_timezone(timedelta(hours=5, minutes=30), name="Asia/Kolkata")
+        return dt_timezone.utc
 
 
 @dataclass(frozen=True)
@@ -14,6 +25,43 @@ class SimConfig:
     out_db: Path = Path("data/vehicle.db")
     candump_dir: Path = Path("data/candump")
     ground_truth_path: Path = Path("eval/ground_truth.json")
+
+    # Vehicle clock & timezone
+    timezone: str = "Asia/Kolkata"
+    reference_now: datetime | None = None
+
+    def get_reference_now(self) -> datetime:
+        """Return the anchor 'reference now' as a timezone-aware datetime in the vehicle timezone."""
+        tz = _get_tz(self.timezone)
+        if self.reference_now is not None:
+            if self.reference_now.tzinfo is None:
+                return self.reference_now.replace(tzinfo=tz)
+            return self.reference_now.astimezone(tz)
+        # Default reference now: end of Day 28 (2026-10-28 23:59:59) in vehicle timezone
+        return datetime(2026, 10, 28, 23, 59, 59, tzinfo=tz)
+
+    def get_base_datetime(self, days: int = 28) -> datetime:
+        """Return start datetime (Day 0 00:00:00) so history ends at reference_now."""
+        ref_now = self.get_reference_now()
+        tz = _get_tz(self.timezone)
+        start_date = ref_now.date() - timedelta(days=days - 1)
+        return datetime.combine(start_date, datetime.min.time(), tzinfo=tz)
+
+    def get_vehicle_date(self, ts_ms: int) -> str:
+        """Format an epoch ms timestamp as a YYYY-MM-DD date in the vehicle timezone."""
+        dt = datetime.fromtimestamp(ts_ms / 1000.0, tz=_get_tz(self.timezone))
+        return dt.strftime("%Y-%m-%d")
+
+    def get_yesterday_date(self) -> str:
+        """Return 'yesterday' date string relative to reference now in vehicle timezone."""
+        ref = self.get_reference_now()
+        yesterday = ref.date() - timedelta(days=1)
+        return yesterday.strftime("%Y-%m-%d")
+
+    def get_today_date(self) -> str:
+        """Return 'today' date string for reference now in vehicle timezone."""
+        ref = self.get_reference_now()
+        return ref.date().strftime("%Y-%m-%d")
 
     # DBC / catalog paths
     dbc_path: Path = Path("docs/signals.dbc")

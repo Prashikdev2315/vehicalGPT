@@ -17,8 +17,11 @@ venv/
 *.swo
 
 # Generated data
-data/vehicle.db
-data/candump/*.log
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/candump/*
+!data/candump/.gitkeep
 
 # OS
 .DS_Store
