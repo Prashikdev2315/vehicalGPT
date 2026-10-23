@@ -59,6 +59,19 @@ jobs:
             vehiclegpt:milestone3-amd64 \
             python -m pytest tests/ -m "not slow" -v --tb=short
 
+      # ── Stage 2b: Dedicated multicast integration check in host network mode ──
+      - name: Run dedicated udp_multicast two-process test on AMD64
+        run: |
+          docker run --rm \
+            --platform linux/amd64 \
+            --memory=2g \
+            --memory-swap=2g \
+            --cpus=2 \
+            --network host \
+            -e VEHICLEGPT_REQUIRE_UDP_MULTICAST=1 \
+            vehiclegpt:milestone3-amd64 \
+            python -m pytest tests/test_udp_multicast.py -v --tb=short
+
       # ── Stage 3: Unit tests under strict 2 GB memory and 2 CPUs limits on ARM64 ──
       - name: Run unit test suite on ARM64 (2 GB memory / 2 CPUs limit under QEMU)
         run: |
@@ -121,6 +134,7 @@ jobs:
             --memory-swap=2g \
             --cpus=2 \
             --network none \
+            -e PYTHONUNBUFFERED=1 \
             -v ${{ github.workspace }}/models:/app/models:ro \
             -v ${{ github.workspace }}/data:/app/data \
             vehiclegpt:milestone3-amd64 \
