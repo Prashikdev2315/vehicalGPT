@@ -31,7 +31,27 @@ def test_slm_engine_lazy_init() -> None:
     engine = SLMEngine(model_path="models/nonexistent.gguf", n_ctx=1024, n_threads=2, lazy_load=True)
     assert engine.n_ctx == 1024
     assert engine.n_threads == 2
+    assert engine.use_cache is False
     assert engine.is_available is False
 
     with pytest.raises(FileNotFoundError):
         engine._ensure_loaded()
+
+
+def test_slm_engine_use_cache_explicit_opt_in() -> None:
+    """Verify SLMEngine allows explicitly enabling cache when requested."""
+    engine = SLMEngine(model_path="models/nonexistent.gguf", n_ctx=1024, n_threads=2, use_cache=True, lazy_load=True)
+    assert engine.use_cache is True
+
+
+def test_get_slm_engine_cache_defaults_and_opt_in() -> None:
+    """Verify get_slm_engine defaults to use_cache=False and preserves opt-in compatibility."""
+    from slm.engine import get_slm_engine, reset_slm_engine
+    reset_slm_engine()
+    e_default = get_slm_engine(model_path="models/nonexistent.gguf", lazy_load=True)
+    assert e_default.use_cache is False
+
+    reset_slm_engine()
+    e_opt_in = get_slm_engine(model_path="models/nonexistent.gguf", use_cache=True, lazy_load=True)
+    assert e_opt_in.use_cache is True
+    reset_slm_engine()

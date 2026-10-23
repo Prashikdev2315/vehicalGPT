@@ -134,6 +134,7 @@ jobs:
             --memory-swap=2g \
             --cpus=2 \
             --network none \
+            -e PYTHONUNBUFFERED=1 \
             -v ${{ github.workspace }}/models:/app/models:ro \
             -v ${{ github.workspace }}/data:/app/data \
             vehiclegpt:milestone3-amd64 \

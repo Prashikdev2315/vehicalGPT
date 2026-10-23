@@ -37,6 +37,7 @@ def get_slm_engine(
     model_path: Path | str | None = None,
     n_ctx: int = 2048,
     n_threads: int = 2,
+    use_cache: bool = False,
     lazy_load: bool = True,
 ) -> SLMEngine:
     """Get or create singleton SLMEngine instance."""
@@ -46,9 +47,16 @@ def get_slm_engine(
             model_path=model_path,
             n_ctx=n_ctx,
             n_threads=n_threads,
+            use_cache=use_cache,
             lazy_load=lazy_load,
         )
     return _GLOBAL_ENGINE
+
+
+def reset_slm_engine() -> None:
+    """Reset the global engine singleton (used in tests and reconfiguration)."""
+    global _GLOBAL_ENGINE
+    _GLOBAL_ENGINE = None
 
 
 class SLMEngine:
@@ -59,7 +67,7 @@ class SLMEngine:
         model_path: Path | str | None = None,
         n_ctx: int = 2048,
         n_threads: int = 2,
-        use_cache: bool = True,
+        use_cache: bool = False,
         lazy_load: bool = True,
     ) -> None:
         self.model_path = Path(model_path) if model_path else get_model_path()
