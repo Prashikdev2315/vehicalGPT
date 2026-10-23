@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import os
 from pathlib import Path
 
 import pytest
@@ -10,10 +11,15 @@ import pytest
 
 def test_udp_multicast_two_processes() -> None:
     """Verify that process A can send and process B can receive via udp_multicast."""
+    require_multicast = os.getenv("VEHICLEGPT_REQUIRE_UDP_MULTICAST") == "1"
     rx_code = (
         "import sys, can\n"
         "try:\n"
         "    bus = can.Bus(interface='udp_multicast', channel='239.0.0.1', port=50020)\n"
+        "except Exception as e:\n"
+        "    print(f'INIT_ERROR:{type(e).__name__}:{e}', flush=True)\n"
+        "    sys.exit(2)\n"
+        "try:\n"
         "    print('READY', flush=True)\n"
         "    msg = bus.recv(timeout=4.0)\n"
         "    bus.shutdown()\n"
@@ -22,8 +28,8 @@ def test_udp_multicast_two_processes() -> None:
         "        sys.exit(0)\n"
         "    sys.exit(1)\n"
         "except Exception as e:\n"
-        "    print(f'ERROR: {e}', flush=True)\n"
-        "    sys.exit(2)\n"
+        "    print(f'RUNTIME_ERROR:{type(e).__name__}:{e}', flush=True)\n"
+        "    sys.exit(3)\n"
     )
 
     tx_code = (
@@ -45,9 +51,41 @@ def test_udp_multicast_two_processes() -> None:
 
     # Wait for receiver to be bound and ready
     ready_line = p_rx.stdout.readline().strip() if p_rx.stdout else ""
+    if ready_line.startswith("INIT_ERROR:"):
+        _, exc_type, exc_msg = ready_line.split(":", 2)
+        init_unavailable_patterns = (
+            "could not create or configure socket",
+            "No such device",
+            "Network is unreachable",
+            "Operation not permitted",
+            "Cannot assign requested address",
+        )
+        is_env_unavailable = (
+            exc_type in {"OSError", "CanInitializationError", "CanInterfaceNotImplementedError"}
+            and any(pattern in exc_msg for pattern in init_unavailable_patterns)
+        )
+        if is_env_unavailable and not require_multicast:
+            p_rx.communicate(timeout=5)
+            pytest.skip(
+                f"udp_multicast unavailable in this runtime ({exc_type}: {exc_msg})"
+            )
+        stdout, stderr = p_rx.communicate(timeout=5)
+        pytest.fail(
+            "Receiver failed to initialize udp_multicast: "
+            f"{exc_type}: {exc_msg}. stdout={stdout} stderr={stderr}"
+        )
+    if ready_line == "":
+        stdout, stderr = p_rx.communicate(timeout=5)
+        pytest.fail(f"Receiver produced no readiness output. stdout={stdout} stderr={stderr}")
+    if ready_line.startswith("RUNTIME_ERROR:"):
+        stdout, stderr = p_rx.communicate(timeout=5)
+        pytest.fail(f"Receiver runtime error before READY: {ready_line}. stdout={stdout} stderr={stderr}")
+    if ready_line.startswith("ERROR:"):
+        stdout, stderr = p_rx.communicate(timeout=5)
+        pytest.fail(f"Receiver startup error before READY: {ready_line}. stdout={stdout} stderr={stderr}")
     if "could not create or configure socket" in ready_line:
         p_rx.communicate(timeout=5)
-        pytest.skip("udp_multicast socket unavailable in this container/network runtime")
+        pytest.fail(f"Unexpected unstructured startup error format: {ready_line}")
     assert ready_line == "READY", f"Receiver did not report READY: {ready_line}"
 
     p_tx = subprocess.Popen(
